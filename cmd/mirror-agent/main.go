@@ -93,15 +93,41 @@ func main() {
 		slog.Info("Diff 采集未启用（需配置 watch_paths）")
 	}
 
-	slog.Info("Mirror Agent 已启动，按 Ctrl+C 退出")
+	slog.Info("Mirror Agent 已启动")
 
-	// 等待退出信号
+	// ========== 系统托盘 ==========
+	quitChan := make(chan struct{})
+
+	tray := handler.NewTrayHandler(&handler.TrayConfig{
+		AppName: cfg.App.Name,
+		OnOpen: func() {
+			slog.Info("打开 UI 面板")
+			handler.OpenUI()
+		},
+		OnQuit: func() {
+			slog.Info("从托盘退出")
+			close(quitChan)
+		},
+	})
+
+	// 监听系统信号
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
-	<-sigChan
+	go func() {
+		select {
+		case <-sigChan:
+			slog.Info("收到系统退出信号")
+			tray.Quit()
+		case <-quitChan:
+			// 从托盘菜单退出
+		}
+	}()
 
-	slog.Info("收到退出信号，正在关闭...")
+	// 运行托盘（阻塞）
+	tray.Run()
+
+	slog.Info("正在关闭...")
 
 	// 优雅关闭
 	cancel()
