@@ -14,6 +14,7 @@ import (
 type Config struct {
 	App       AppConfig       `mapstructure:"app"`
 	Collector CollectorConfig `mapstructure:"collector"`
+	Diff      DiffConfig      `mapstructure:"diff"`
 	Storage   StorageConfig   `mapstructure:"storage"`
 	AI        AIConfig        `mapstructure:"ai"`
 	Privacy   PrivacyConfig   `mapstructure:"privacy"`
@@ -38,6 +39,15 @@ type CollectorConfig struct {
 // StorageConfig 存储配置
 type StorageConfig struct {
 	DBPath string `mapstructure:"db_path"`
+}
+
+// DiffConfig Diff 采集配置
+type DiffConfig struct {
+	Enabled     bool     `mapstructure:"enabled"`
+	WatchPaths  []string `mapstructure:"watch_paths"`
+	Extensions  []string `mapstructure:"extensions"`
+	BufferSize  int      `mapstructure:"buffer_size"`
+	DebounceSec int      `mapstructure:"debounce_sec"`
 }
 
 // AIConfig AI 配置
@@ -132,6 +142,13 @@ func setDefaults(v *viper.Viper) {
 
 	// Storage
 	v.SetDefault("storage.db_path", "./data/mirror.db")
+
+	// Diff
+	v.SetDefault("diff.enabled", true)
+	v.SetDefault("diff.watch_paths", []string{})
+	v.SetDefault("diff.extensions", []string{".go", ".py", ".js", ".ts", ".jsx", ".tsx", ".vue", ".java", ".rs", ".c", ".cpp"})
+	v.SetDefault("diff.buffer_size", 512)
+	v.SetDefault("diff.debounce_sec", 2)
 
 	// AI
 	v.SetDefault("ai.deepseek.base_url", "https://api.deepseek.com")

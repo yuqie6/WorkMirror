@@ -13,6 +13,27 @@ collector:
   flush_batch_size: 100 # 批量写入阈值
   flush_interval_sec: 5 # 强制刷新间隔 (秒)
 
+# Diff 采集配置
+diff:
+  enabled: true
+  watch_paths: [] # 监控的项目目录，为空则不启用
+  extensions:
+    [
+      ".go",
+      ".py",
+      ".js",
+      ".ts",
+      ".jsx",
+      ".tsx",
+      ".vue",
+      ".java",
+      ".rs",
+      ".c",
+      ".cpp",
+    ]
+  buffer_size: 512
+  debounce_sec: 2 # 防抖时间（秒）
+
 # 存储配置
 storage:
   db_path: "./data/mirror.db"
