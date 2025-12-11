@@ -144,3 +144,14 @@ func (r *DiffRepository) CountByDateRange(ctx context.Context, startTime, endTim
 	}
 	return count, nil
 }
+
+// GetAllAnalyzed 获取所有已分析的 Diff
+func (r *DiffRepository) GetAllAnalyzed(ctx context.Context) ([]model.Diff, error) {
+	var diffs []model.Diff
+	if err := r.db.WithContext(ctx).
+		Where("ai_insight != '' AND ai_insight IS NOT NULL").
+		Find(&diffs).Error; err != nil {
+		return nil, fmt.Errorf("查询已分析 Diff 失败: %w", err)
+	}
+	return diffs, nil
+}

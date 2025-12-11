@@ -12,10 +12,11 @@ import (
 
 // AIService AI 分析服务
 type AIService struct {
-	analyzer    *ai.DiffAnalyzer
-	diffRepo    *repository.DiffRepository
-	eventRepo   *repository.EventRepository
-	summaryRepo *repository.SummaryRepository
+	analyzer     *ai.DiffAnalyzer
+	diffRepo     *repository.DiffRepository
+	eventRepo    *repository.EventRepository
+	summaryRepo  *repository.SummaryRepository
+	skillService *SkillService
 }
 
 // NewAIService 创建 AI 服务
@@ -24,12 +25,14 @@ func NewAIService(
 	diffRepo *repository.DiffRepository,
 	eventRepo *repository.EventRepository,
 	summaryRepo *repository.SummaryRepository,
+	skillService *SkillService,
 ) *AIService {
 	return &AIService{
-		analyzer:    analyzer,
-		diffRepo:    diffRepo,
-		eventRepo:   eventRepo,
-		summaryRepo: summaryRepo,
+		analyzer:     analyzer,
+		diffRepo:     diffRepo,
+		eventRepo:    eventRepo,
+		summaryRepo:  summaryRepo,
+		skillService: skillService,
 	}
 }
 
@@ -57,6 +60,13 @@ func (s *AIService) AnalyzePendingDiffs(ctx context.Context, limit int) (int, er
 		if err := s.diffRepo.UpdateAIInsight(ctx, diff.ID, insight.Insight, insight.Skills); err != nil {
 			slog.Warn("更新 Diff 解读失败", "id", diff.ID, "error", err)
 			continue
+		}
+
+		// 更新技能树
+		diff.AIInsight = insight.Insight
+		diff.SkillsDetected = model.JSONArray(insight.Skills)
+		if err := s.skillService.UpdateSkillsFromDiffs(ctx, []model.Diff{diff}); err != nil {
+			slog.Warn("更新技能失败", "file", diff.FileName, "error", err)
 		}
 
 		slog.Info("Diff 分析完成",

@@ -94,7 +94,9 @@ func reportCmd() *cobra.Command {
 			diffRepo := repository.NewDiffRepository(db.DB)
 			eventRepo := repository.NewEventRepository(db.DB)
 			summaryRepo := repository.NewSummaryRepository(db.DB)
-			aiService := service.NewAIService(analyzer, diffRepo, eventRepo, summaryRepo)
+			skillRepo := repository.NewSkillRepository(db.DB)
+			skillService := service.NewSkillService(skillRepo, diffRepo)
+			aiService := service.NewAIService(analyzer, diffRepo, eventRepo, summaryRepo, skillService)
 
 			// 先分析待处理的 Diff
 			analyzed, _ := aiService.AnalyzePendingDiffs(ctx, 20)
@@ -291,7 +293,9 @@ func analyzeCmd() *cobra.Command {
 			diffRepo := repository.NewDiffRepository(db.DB)
 			eventRepo := repository.NewEventRepository(db.DB)
 			summaryRepo := repository.NewSummaryRepository(db.DB)
-			aiService := service.NewAIService(analyzer, diffRepo, eventRepo, summaryRepo)
+			skillRepo := repository.NewSkillRepository(db.DB)
+			skillService := service.NewSkillService(skillRepo, diffRepo)
+			aiService := service.NewAIService(analyzer, diffRepo, eventRepo, summaryRepo, skillService)
 
 			fmt.Printf("🔍 正在分析待处理的代码变更 (最多 %d 个)...\n", limit)
 
@@ -389,6 +393,25 @@ func skillsCmd() *cobra.Command {
 			if err != nil {
 				fmt.Printf("❌ 获取技能树失败: %v\n", err)
 				os.Exit(1)
+			}
+
+			// 自动修复：如果要展示的技能树为空，但数据库中有已分析的 Diff，则尝试同步
+			if tree.TotalSkills == 0 {
+				diffs, err := diffRepo.GetAllAnalyzed(ctx)
+				if err == nil && len(diffs) > 0 {
+					fmt.Printf("🔄 检测到 %d 个已分析的变更但技能树为空，正在同步技能...\n", len(diffs))
+					if err := skillService.UpdateSkillsFromDiffs(ctx, diffs); err == nil {
+						// 同步后重新获取
+						tree, err = skillService.GetSkillTree(ctx)
+						if err != nil {
+							fmt.Printf("❌ 获取技能树失败: %v\n", err)
+							os.Exit(1)
+						}
+						fmt.Printf("✅ 同步完成，发现 %d 个技能\n\n", tree.TotalSkills)
+					} else {
+						fmt.Printf("⚠️ 同步技能失败: %v\n", err)
+					}
+				}
 			}
 
 			if tree.TotalSkills == 0 {
