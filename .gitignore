@@ -1,0 +1,41 @@
+# Go 构建产物
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# 测试覆盖率
+*.out
+coverage.html
+
+# 依赖目录
+vendor/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# 运行时数据
+data/
+*.db
+*.db-shm
+*.db-wal
+
+# 配置文件（包含敏感信息）
+config/config.local.yaml
+
+# 日志
+*.log
+logs/
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 构建目录
+dist/
+build/

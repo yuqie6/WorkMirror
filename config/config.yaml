@@ -1,0 +1,37 @@
+# Mirror Agent 配置文件
+
+app:
+  name: "mirror-agent"
+  version: "0.1.0"
+  log_level: "info" # debug, info, warn, error
+
+# 采集器配置
+collector:
+  poll_interval_ms: 500 # 窗口轮询间隔 (毫秒)
+  min_duration_sec: 3 # 最小记录时长 (秒)，低于此值的窗口切换会被忽略
+  buffer_size: 2048 # 事件缓冲区大小
+  flush_batch_size: 100 # 批量写入阈值
+  flush_interval_sec: 5 # 强制刷新间隔 (秒)
+
+# 存储配置
+storage:
+  db_path: "./data/mirror.db"
+
+# AI API 配置
+ai:
+  # DeepSeek LLM
+  deepseek:
+    api_key: "${DEEPSEEK_API_KEY}"
+    base_url: "https://api.deepseek.com"
+    model: "deepseek-chat"
+
+  # Jina Embedding & Reranker
+  jina:
+    api_key: "${JINA_API_KEY}"
+    embedding_model: "jina-embeddings-v3"
+    reranker_model: "jina-reranker-v2-base-multilingual"
+
+# 隐私配置 (Phase 2)
+privacy:
+  enabled: false
+  patterns: []
