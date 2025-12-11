@@ -98,3 +98,26 @@ func (r *SkillRepository) Count(ctx context.Context) (int64, error) {
 	}
 	return count, nil
 }
+
+// Transaction 在事务中执行操作
+func (r *SkillRepository) Transaction(ctx context.Context, fn func(tx *gorm.DB) error) error {
+	return r.db.WithContext(ctx).Transaction(fn)
+}
+
+// UpsertBatch 批量插入或更新技能（在事务中）
+func (r *SkillRepository) UpsertBatch(ctx context.Context, skills []*model.SkillNode) error {
+	if len(skills) == 0 {
+		return nil
+	}
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		for _, skill := range skills {
+			if err := tx.Clauses(clause.OnConflict{
+				Columns:   []clause.Column{{Name: "key"}},
+				UpdateAll: true,
+			}).Create(skill).Error; err != nil {
+				return fmt.Errorf("批量更新技能失败: %w", err)
+			}
+		}
+		return nil
+	})
+}

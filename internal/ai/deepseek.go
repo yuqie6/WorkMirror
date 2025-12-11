@@ -144,3 +144,59 @@ func (c *DeepSeekClient) ChatWithOptions(ctx context.Context, messages []Message
 func (c *DeepSeekClient) IsConfigured() bool {
 	return c.apiKey != ""
 }
+
+// ChatWithRetry 带重试的聊天请求（指数退避）
+func (c *DeepSeekClient) ChatWithRetry(ctx context.Context, messages []Message, maxRetries int) (string, error) {
+	var lastErr error
+	for i := 0; i < maxRetries; i++ {
+		resp, err := c.Chat(ctx, messages)
+		if err == nil {
+			return resp, nil
+		}
+		lastErr = err
+
+		// 检查是否是可重试错误（网络错误、5xx 错误）
+		if !isRetryableError(err) {
+			return "", err
+		}
+
+		// 指数退避：1s, 2s, 4s...
+		backoff := time.Duration(1<<uint(i)) * time.Second
+		slog.Warn("API 调用失败，准备重试", "attempt", i+1, "backoff", backoff, "error", err)
+
+		select {
+		case <-ctx.Done():
+			return "", ctx.Err()
+		case <-time.After(backoff):
+		}
+	}
+	return "", fmt.Errorf("达到最大重试次数 (%d): %w", maxRetries, lastErr)
+}
+
+// isRetryableError 判断是否是可重试错误
+func isRetryableError(err error) bool {
+	if err == nil {
+		return false
+	}
+	errStr := err.Error()
+	// 网络错误或 5xx 错误可重试
+	return contains(errStr, "timeout") ||
+		contains(errStr, "connection") ||
+		contains(errStr, "500") ||
+		contains(errStr, "502") ||
+		contains(errStr, "503") ||
+		contains(errStr, "504")
+}
+
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsImpl(s, substr))
+}
+
+func containsImpl(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
+}

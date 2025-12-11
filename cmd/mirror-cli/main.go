@@ -5,14 +5,15 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 	"time"
 
+	"github.com/spf13/cobra"
 	"github.com/yuqie6/mirror/internal/ai"
 	"github.com/yuqie6/mirror/internal/model"
 	"github.com/yuqie6/mirror/internal/pkg/config"
 	"github.com/yuqie6/mirror/internal/repository"
 	"github.com/yuqie6/mirror/internal/service"
-	"github.com/spf13/cobra"
 )
 
 var (
@@ -58,6 +59,7 @@ func main() {
 	rootCmd.AddCommand(statsCmd())
 	rootCmd.AddCommand(skillsCmd())
 	rootCmd.AddCommand(trendsCmd())
+	rootCmd.AddCommand(queryCmd())
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
@@ -562,6 +564,88 @@ func trendsCmd() *cobra.Command {
 	}
 
 	cmd.Flags().IntVarP(&days, "days", "d", 7, "分析天数 (7 或 30)")
+
+	return cmd
+}
+
+// queryCmd 查询历史记忆
+func queryCmd() *cobra.Command {
+	var topK int
+
+	cmd := &cobra.Command{
+		Use:   "query [问题]",
+		Short: "查询历史学习记忆 (RAG)",
+		Long:  "使用语义搜索查询历史编程活动和学习记录",
+		Args:  cobra.MinimumNArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			query := strings.Join(args, " ")
+
+			cfg, err := config.Load(cfgFile)
+			if err != nil {
+				fmt.Printf("❌ 加载配置失败: %v\n", err)
+				return
+			}
+
+			// 初始化数据库
+			db, err := repository.NewDatabase(cfg.Storage.DBPath)
+			if err != nil {
+				fmt.Printf("❌ 初始化数据库失败: %v\n", err)
+				return
+			}
+			defer db.Close()
+
+			// 创建仓储
+			summaryRepo := repository.NewSummaryRepository(db.DB)
+			diffRepo := repository.NewDiffRepository(db.DB)
+
+			// 创建 SiliconFlow 客户端
+			sfClient := ai.NewSiliconFlowClient(&ai.SiliconFlowConfig{
+				APIKey:         cfg.AI.SiliconFlow.APIKey,
+				BaseURL:        cfg.AI.SiliconFlow.BaseURL,
+				EmbeddingModel: cfg.AI.SiliconFlow.EmbeddingModel,
+				RerankerModel:  cfg.AI.SiliconFlow.RerankerModel,
+			})
+
+			if !sfClient.IsConfigured() {
+				fmt.Println("❌ SiliconFlow API 未配置，无法使用 RAG 查询")
+				fmt.Println("请在 config.yaml 中配置 ai.siliconflow.api_key")
+				return
+			}
+
+			// 创建 RAG 服务
+			ragService, err := service.NewRAGService(sfClient, summaryRepo, diffRepo, nil)
+			if err != nil {
+				fmt.Printf("❌ 初始化 RAG 服务失败: %v\n", err)
+				return
+			}
+			defer ragService.Close()
+
+			ctx := context.Background()
+
+			fmt.Printf("\n🔍 搜索: %s\n\n", query)
+
+			results, err := ragService.Query(ctx, query, topK)
+			if err != nil {
+				fmt.Printf("❌ 查询失败: %v\n", err)
+				return
+			}
+
+			if len(results) == 0 {
+				fmt.Println("未找到相关记忆，请先运行 mirror analyze 分析代码并生成总结")
+				return
+			}
+
+			fmt.Printf("📚 找到 %d 条相关记忆:\n\n", len(results))
+			for i, r := range results {
+				fmt.Printf("──────────────────────────────────────\n")
+				fmt.Printf("[%d] 类型: %s | 日期: %s | 相似度: %.2f\n", i+1, r.Type, r.Date, r.Similarity)
+				fmt.Printf("%s\n", r.Content)
+			}
+			fmt.Println("──────────────────────────────────────")
+		},
+	}
+
+	cmd.Flags().IntVarP(&topK, "top", "n", 5, "返回结果数量")
 
 	return cmd
 }

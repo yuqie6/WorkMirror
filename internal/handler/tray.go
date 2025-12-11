@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -63,11 +64,17 @@ func (t *TrayHandler) onReady() {
 				}
 			case <-mAutoStart.ClickedCh:
 				if mAutoStart.Checked() {
-					disableAutoStart()
-					mAutoStart.Uncheck()
+					if err := disableAutoStart(); err != nil {
+						slog.Warn("禁用开机自启动失败", "error", err)
+					} else {
+						mAutoStart.Uncheck()
+					}
 				} else {
-					enableAutoStart()
-					mAutoStart.Check()
+					if err := enableAutoStart(); err != nil {
+						slog.Warn("启用开机自启动失败", "error", err)
+					} else {
+						mAutoStart.Check()
+					}
 				}
 			case <-mQuit.ClickedCh:
 				if t.onQuit != nil {
@@ -145,13 +152,15 @@ func OpenUI() {
 
 	for _, uiPath := range possiblePaths {
 		if _, err := os.Stat(uiPath); err == nil {
-			exec.Command(uiPath).Start()
+			if err := exec.Command(uiPath).Start(); err != nil {
+				slog.Error("启动 UI 失败", "path", uiPath, "error", err)
+			}
 			return
 		}
 	}
 
-	// 都没找到，输出错误
-	// 用户需要手动放置 mirror-ui.exe 到正确位置
+	// 没找到 UI 程序
+	slog.Warn("未找到 mirror-ui.exe", "searched_paths", possiblePaths)
 }
 
 // getDefaultIcon 返回默认图标

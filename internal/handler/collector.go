@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/yuqie6/mirror/internal/model"
@@ -28,6 +29,8 @@ type WindowCollector struct {
 	lastSwitchAt time.Time
 	currentStart time.Time
 	running      bool
+	stopOnce     sync.Once  // 确保 Stop 只执行一次
+	mu           sync.Mutex // 保护 running 状态
 }
 
 // CollectorConfig 采集器配置
@@ -62,32 +65,39 @@ func NewWindowCollector(cfg *CollectorConfig) *WindowCollector {
 
 // Start 启动采集
 func (c *WindowCollector) Start(ctx context.Context) error {
+	c.mu.Lock()
 	if c.running {
+		c.mu.Unlock()
 		return nil
 	}
-
 	c.running = true
-	slog.Info("窗口采集器启动", "poll_interval", c.pollInterval, "min_duration", c.minDuration)
+	c.mu.Unlock()
 
+	slog.Info("窗口采集器启动", "poll_interval", c.pollInterval, "min_duration", c.minDuration)
 	go c.pollLoop(ctx)
 	return nil
 }
 
-// Stop 停止采集
+// Stop 停止采集（线程安全，可重复调用）
 func (c *WindowCollector) Stop() error {
-	if !c.running {
-		return nil
-	}
+	c.stopOnce.Do(func() {
+		c.mu.Lock()
+		if !c.running {
+			c.mu.Unlock()
+			return
+		}
+		c.running = false
+		c.mu.Unlock()
 
-	close(c.stopChan)
-	c.running = false
+		close(c.stopChan)
 
-	// 记录最后一个窗口的时长
-	if c.lastWindow != nil {
-		c.emitEvent(c.lastWindow, time.Since(c.currentStart))
-	}
+		// 记录最后一个窗口的时长
+		if c.lastWindow != nil {
+			c.emitEvent(c.lastWindow, time.Since(c.currentStart))
+		}
 
-	slog.Info("窗口采集器已停止")
+		slog.Info("窗口采集器已停止")
+	})
 	return nil
 }
 

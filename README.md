@@ -13,7 +13,7 @@
 
 - **后端**: Go 1.25.4
 - **存储**: SQLite (WAL 模式)
-- **AI**: DeepSeek (LLM) + Jina (Embedding/Reranker)
+- **AI**: DeepSeek (LLM) + SiliconFlow (Embedding/Reranker)
 
 ## 快速开始
 

@@ -89,8 +89,12 @@ type DailySummaryDTO struct {
 
 // GetTodaySummary 获取今日总结
 func (a *App) GetTodaySummary() (*DailySummaryDTO, error) {
+	// 添加超时防止长时间阻塞
+	ctx, cancel := context.WithTimeout(a.ctx, 30*time.Second)
+	defer cancel()
+
 	today := time.Now().Format("2006-01-02")
-	summary, err := a.aiService.GenerateDailySummary(a.ctx, today)
+	summary, err := a.aiService.GenerateDailySummary(ctx, today)
 	if err != nil {
 		return nil, err
 	}

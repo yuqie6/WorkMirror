@@ -6,7 +6,9 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
+	"github.com/yuqie6/mirror/internal/ai"
 	"github.com/yuqie6/mirror/internal/handler"
 	"github.com/yuqie6/mirror/internal/pkg/config"
 	"github.com/yuqie6/mirror/internal/repository"
@@ -40,6 +42,8 @@ func main() {
 	// 创建仓储
 	eventRepo := repository.NewEventRepository(db.DB)
 	diffRepo := repository.NewDiffRepository(db.DB)
+	summaryRepo := repository.NewSummaryRepository(db.DB)
+	skillRepo := repository.NewSkillRepository(db.DB)
 
 	// 创建上下文
 	ctx, cancel := context.WithCancel(context.Background())
@@ -76,7 +80,6 @@ func main() {
 			os.Exit(1)
 		}
 
-		// 添加监控路径
 		for _, path := range cfg.Diff.WatchPaths {
 			if err := diffCollector.AddWatchPath(path); err != nil {
 				slog.Warn("添加监控路径失败", "path", path, "error", err)
@@ -91,6 +94,45 @@ func main() {
 		slog.Info("Diff 采集已启用", "watch_paths", cfg.Diff.WatchPaths)
 	} else {
 		slog.Info("Diff 采集未启用（需配置 watch_paths）")
+	}
+
+	// ========== AI 分析服务（定时任务）==========
+	var aiService *service.AIService
+	if cfg.AI.DeepSeek.APIKey != "" {
+		deepseekClient := ai.NewDeepSeekClient(&ai.DeepSeekConfig{
+			APIKey:  cfg.AI.DeepSeek.APIKey,
+			BaseURL: cfg.AI.DeepSeek.BaseURL,
+			Model:   cfg.AI.DeepSeek.Model,
+		})
+		analyzer := ai.NewDiffAnalyzer(deepseekClient)
+		skillService := service.NewSkillService(skillRepo, diffRepo)
+		aiService = service.NewAIService(analyzer, diffRepo, eventRepo, summaryRepo, skillService)
+
+		// 启动 AI 定时分析任务（每 5 分钟）
+		go runAIAnalysisLoop(ctx, aiService, 5*time.Minute)
+		slog.Info("AI 分析服务已启用（每 5 分钟自动分析）")
+	} else {
+		slog.Warn("AI 分析未启用（需配置 DEEPSEEK_API_KEY）")
+	}
+
+	// ========== RAG 服务（可选）==========
+	var ragService *service.RAGService
+	if cfg.AI.SiliconFlow.APIKey != "" {
+		sfClient := ai.NewSiliconFlowClient(&ai.SiliconFlowConfig{
+			APIKey:         cfg.AI.SiliconFlow.APIKey,
+			BaseURL:        cfg.AI.SiliconFlow.BaseURL,
+			EmbeddingModel: cfg.AI.SiliconFlow.EmbeddingModel,
+			RerankerModel:  cfg.AI.SiliconFlow.RerankerModel,
+		})
+		ragService, err = service.NewRAGService(sfClient, summaryRepo, diffRepo, nil)
+		if err != nil {
+			slog.Warn("初始化 RAG 服务失败", "error", err)
+		} else {
+			if aiService != nil {
+				aiService.SetRAGService(ragService)
+			}
+			slog.Info("RAG 长期记忆服务已启用")
+		}
 	}
 
 	slog.Info("Mirror Agent 已启动")
@@ -135,6 +177,39 @@ func main() {
 	if diffService != nil {
 		diffService.Stop()
 	}
+	if ragService != nil {
+		ragService.Close()
+	}
 
 	slog.Info("Mirror Agent 已退出")
+}
+
+// runAIAnalysisLoop 定时运行 AI 分析
+func runAIAnalysisLoop(ctx context.Context, aiService *service.AIService, interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	// 启动后立即运行一次
+	analyzeWithRetry(ctx, aiService)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			analyzeWithRetry(ctx, aiService)
+		}
+	}
+}
+
+// analyzeWithRetry 带重试的分析
+func analyzeWithRetry(ctx context.Context, aiService *service.AIService) {
+	count, err := aiService.AnalyzePendingDiffs(ctx, 10) // 每次最多分析 10 个
+	if err != nil {
+		slog.Warn("AI 分析出错", "error", err)
+		return
+	}
+	if count > 0 {
+		slog.Info("AI 分析完成", "analyzed", count)
+	}
 }

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/yuqie6/mirror/internal/ai"
 	"github.com/yuqie6/mirror/internal/model"
 	"github.com/yuqie6/mirror/internal/repository"
 )
@@ -52,6 +53,79 @@ func (s *SkillService) UpdateSkillsFromDiffs(ctx context.Context, diffs []model.
 	}
 
 	return nil
+}
+
+// UpdateSkillsFromDiffsWithCategory 根据 Diff 和 AI 返回的技能分类更新技能(使用 AI 决定的分类)
+func (s *SkillService) UpdateSkillsFromDiffsWithCategory(ctx context.Context, diffs []model.Diff, skills []ai.SkillWithCategory) error {
+	skillExp := make(map[string]float64)     // skill key -> exp to add
+	skillCategory := make(map[string]string) // skill key -> category
+
+	for _, diff := range diffs {
+		// 根据语言添加基础经验
+		langKey := s.getLanguageSkillKey(diff.Language)
+		if langKey != "" {
+			baseExp := 1.0 + float64(diff.LinesAdded+diff.LinesDeleted)/10.0
+			skillExp[langKey] += baseExp
+			skillCategory[langKey] = "language"
+		}
+	}
+
+	// 根据 AI 检测的技能添加经验（使用 AI 决定的分类）
+	for _, skill := range skills {
+		skillKey := s.normalizeSkillKey(skill.Name)
+		skillExp[skillKey] += 0.5
+		skillCategory[skillKey] = skill.Category
+	}
+
+	// 收集需要更新的技能
+	skillsToUpdate := make([]*model.SkillNode, 0, len(skillExp))
+	for skillKey, exp := range skillExp {
+		category := skillCategory[skillKey]
+		if category == "" {
+			category = "other"
+		}
+
+		skill, err := s.skillRepo.GetByKey(ctx, skillKey)
+		if err != nil {
+			slog.Warn("获取技能失败", "skill", skillKey, "error", err)
+			continue
+		}
+
+		if skill == nil {
+			skill = model.NewSkillNode(skillKey, s.getSkillName(skillKey), category)
+		} else if skill.Category != category && category != "" && category != "other" {
+			skill.Category = category
+		}
+
+		skill.AddExp(exp)
+		skillsToUpdate = append(skillsToUpdate, skill)
+	}
+
+	// 使用事务批量更新
+	if err := s.skillRepo.UpsertBatch(ctx, skillsToUpdate); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// addSkillExpWithCategory 给技能添加经验（使用指定分类）
+func (s *SkillService) addSkillExpWithCategory(ctx context.Context, skillKey string, exp float64, category string) error {
+	skill, err := s.skillRepo.GetByKey(ctx, skillKey)
+	if err != nil {
+		return err
+	}
+
+	if skill == nil {
+		// 创建新技能（使用 AI 决定的分类）
+		skill = model.NewSkillNode(skillKey, s.getSkillName(skillKey), category)
+	} else if skill.Category != category && category != "" && category != "other" {
+		// 如果 AI 返回了更具体的分类，更新分类
+		skill.Category = category
+	}
+
+	skill.AddExp(exp)
+	return s.skillRepo.Upsert(ctx, skill)
 }
 
 // addSkillExp 给技能添加经验
@@ -169,32 +243,11 @@ func (s *SkillService) calculateTrend(skill *model.SkillNode) string {
 
 // getLanguageSkillKey 获取语言技能 Key
 func (s *SkillService) getLanguageSkillKey(language string) string {
-	mapping := map[string]string{
-		"Go":         "lang.go",
-		"Python":     "lang.python",
-		"JavaScript": "lang.javascript",
-		"TypeScript": "lang.typescript",
-		"React":      "frontend.react",
-		"Vue":        "frontend.vue",
-		"Java":       "lang.java",
-		"C":          "lang.c",
-		"C++":        "lang.cpp",
-		"Rust":       "lang.rust",
-		"Ruby":       "lang.ruby",
-		"PHP":        "lang.php",
-		"Swift":      "lang.swift",
-		"Kotlin":     "lang.kotlin",
-		"SQL":        "data.sql",
-		"Shell":      "devops.shell",
-		"PowerShell": "devops.powershell",
-		"YAML":       "devops.yaml",
-		"Markdown":   "docs.markdown",
+	if language == "" {
+		return ""
 	}
-
-	if key, ok := mapping[language]; ok {
-		return key
-	}
-	return ""
+	// 直接使用语言名生成 key（AI 已经决定分类）
+	return "lang." + strings.ToLower(language)
 }
 
 // normalizeSkillKey 标准化技能 Key
@@ -207,33 +260,22 @@ func (s *SkillService) normalizeSkillKey(skill string) string {
 
 // getSkillName 获取技能显示名称
 func (s *SkillService) getSkillName(skillKey string) string {
-	// 从 key 提取名称
+	// 从 key 提取名称并标准化
 	parts := strings.Split(skillKey, ".")
+	name := skillKey
 	if len(parts) > 1 {
-		return strings.Title(parts[len(parts)-1])
+		name = parts[len(parts)-1]
 	}
-	return skillKey
+	return model.NormalizeSkillName(name)
 }
 
 // getSkillCategory 获取技能分类
 func (s *SkillService) getSkillCategory(skillKey string) string {
-	if strings.HasPrefix(skillKey, "lang.") {
-		return "language"
+	// 从 key 提取技能名并获取分类
+	parts := strings.Split(skillKey, ".")
+	name := skillKey
+	if len(parts) > 1 {
+		name = parts[len(parts)-1]
 	}
-	if strings.HasPrefix(skillKey, "frontend.") {
-		return "frontend"
-	}
-	if strings.HasPrefix(skillKey, "backend.") {
-		return "backend"
-	}
-	if strings.HasPrefix(skillKey, "devops.") {
-		return "devops"
-	}
-	if strings.HasPrefix(skillKey, "data.") {
-		return "data"
-	}
-	if strings.HasPrefix(skillKey, "skill.") {
-		return "skill"
-	}
-	return "other"
+	return string(model.GetSkillCategory(name))
 }

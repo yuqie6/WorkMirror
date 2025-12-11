@@ -30,11 +30,12 @@ type AppConfig struct {
 
 // CollectorConfig 采集器配置
 type CollectorConfig struct {
-	PollIntervalMs   int `mapstructure:"poll_interval_ms"`
-	MinDurationSec   int `mapstructure:"min_duration_sec"`
-	BufferSize       int `mapstructure:"buffer_size"`
-	FlushBatchSize   int `mapstructure:"flush_batch_size"`
-	FlushIntervalSec int `mapstructure:"flush_interval_sec"`
+	PollIntervalMs   int      `mapstructure:"poll_interval_ms"`
+	MinDurationSec   int      `mapstructure:"min_duration_sec"`
+	BufferSize       int      `mapstructure:"buffer_size"`
+	FlushBatchSize   int      `mapstructure:"flush_batch_size"`
+	FlushIntervalSec int      `mapstructure:"flush_interval_sec"`
+	CodeEditors      []string `mapstructure:"code_editors"` // 代码编辑器进程名列表
 }
 
 // StorageConfig 存储配置
@@ -148,6 +149,13 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("collector.buffer_size", 2048)
 	v.SetDefault("collector.flush_batch_size", 100)
 	v.SetDefault("collector.flush_interval_sec", 5)
+	v.SetDefault("collector.code_editors", []string{
+		"Code.exe", "code.exe", "Cursor.exe", "cursor.exe",
+		"Antigravity.exe", "antigravity.exe",
+		"idea64.exe", "idea.exe", "goland64.exe", "pycharm64.exe", "webstorm64.exe",
+		"devenv.exe", "Zed.exe", "Fleet.exe", "sublime_text.exe", "notepad++.exe",
+		"vim.exe", "nvim.exe", "emacs.exe",
+	})
 
 	// Storage
 	v.SetDefault("storage.db_path", "./data/mirror.db")
@@ -162,8 +170,9 @@ func setDefaults(v *viper.Viper) {
 	// AI
 	v.SetDefault("ai.deepseek.base_url", "https://api.deepseek.com")
 	v.SetDefault("ai.deepseek.model", "deepseek-chat")
-	v.SetDefault("ai.jina.embedding_model", "jina-embeddings-v3")
-	v.SetDefault("ai.jina.reranker_model", "jina-reranker-v2-base-multilingual")
+	v.SetDefault("ai.siliconflow.base_url", "https://api.siliconflow.cn/v1")
+	v.SetDefault("ai.siliconflow.embedding_model", "BAAI/bge-large-zh-v1.5")
+	v.SetDefault("ai.siliconflow.reranker_model", "BAAI/bge-reranker-v2-m3")
 
 	// Privacy
 	v.SetDefault("privacy.enabled", false)

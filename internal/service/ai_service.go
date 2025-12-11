@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"log/slog"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/yuqie6/mirror/internal/ai"
@@ -17,6 +19,7 @@ type AIService struct {
 	eventRepo    *repository.EventRepository
 	summaryRepo  *repository.SummaryRepository
 	skillService *SkillService
+	ragService   *RAGService // 可选，用于查询历史记忆
 }
 
 // NewAIService 创建 AI 服务
@@ -36,7 +39,12 @@ func NewAIService(
 	}
 }
 
-// AnalyzePendingDiffs 分析待处理的 Diff
+// SetRAGService 设置 RAG 服务（可选）
+func (s *AIService) SetRAGService(ragService *RAGService) {
+	s.ragService = ragService
+}
+
+// AnalyzePendingDiffs 分析待处理的 Diff（使用 Worker Pool）
 func (s *AIService) AnalyzePendingDiffs(ctx context.Context, limit int) (int, error) {
 	diffs, err := s.diffRepo.GetPendingAIAnalysis(ctx, limit)
 	if err != nil {
@@ -48,39 +56,74 @@ func (s *AIService) AnalyzePendingDiffs(ctx context.Context, limit int) (int, er
 		return 0, nil
 	}
 
-	analyzed := 0
+	// Worker Pool 配置
+	const workerCount = 3         // 并发 worker 数
+	const rateLimit = time.Second // 每个请求间隔（令牌桶）
+
+	var (
+		wg       sync.WaitGroup
+		analyzed int32
+		mu       sync.Mutex
+		limiter  = time.NewTicker(rateLimit / time.Duration(workerCount))
+	)
+	defer limiter.Stop()
+
+	// 任务通道
+	tasks := make(chan model.Diff, len(diffs))
 	for _, diff := range diffs {
-		insight, err := s.analyzer.AnalyzeDiff(ctx, diff.FilePath, diff.Language, diff.DiffContent)
-		if err != nil {
-			slog.Warn("分析 Diff 失败", "file", diff.FileName, "error", err)
-			continue
-		}
+		tasks <- diff
+	}
+	close(tasks)
 
-		// 更新数据库
-		if err := s.diffRepo.UpdateAIInsight(ctx, diff.ID, insight.Insight, insight.Skills); err != nil {
-			slog.Warn("更新 Diff 解读失败", "id", diff.ID, "error", err)
-			continue
-		}
+	// 启动 workers
+	for i := 0; i < workerCount; i++ {
+		wg.Add(1)
+		go func(workerID int) {
+			defer wg.Done()
+			for diff := range tasks {
+				select {
+				case <-ctx.Done():
+					return
+				case <-limiter.C:
+					// 令牌桶限流
+				}
 
-		// 更新技能树
-		diff.AIInsight = insight.Insight
-		diff.SkillsDetected = model.JSONArray(insight.Skills)
-		if err := s.skillService.UpdateSkillsFromDiffs(ctx, []model.Diff{diff}); err != nil {
-			slog.Warn("更新技能失败", "file", diff.FileName, "error", err)
-		}
+				insight, err := s.analyzer.AnalyzeDiff(ctx, diff.FilePath, diff.Language, diff.DiffContent)
+				if err != nil {
+					slog.Warn("分析 Diff 失败", "worker", workerID, "file", diff.FileName, "error", err)
+					continue
+				}
 
-		slog.Info("Diff 分析完成",
-			"file", diff.FileName,
-			"insight", insight.Insight,
-			"skills", insight.Skills,
-		)
-		analyzed++
+				// 提取技能名列表
+				skillNames := make([]string, 0, len(insight.Skills))
+				for _, skill := range insight.Skills {
+					skillNames = append(skillNames, skill.Name)
+				}
 
-		// 避免 API 限流
-		time.Sleep(500 * time.Millisecond)
+				// 更新数据库（需要锁保护）
+				mu.Lock()
+				if err := s.diffRepo.UpdateAIInsight(ctx, diff.ID, insight.Insight, skillNames); err != nil {
+					mu.Unlock()
+					slog.Warn("更新 Diff 解读失败", "id", diff.ID, "error", err)
+					continue
+				}
+
+				// 更新技能树
+				diff.AIInsight = insight.Insight
+				diff.SkillsDetected = model.JSONArray(skillNames)
+				if err := s.skillService.UpdateSkillsFromDiffsWithCategory(ctx, []model.Diff{diff}, insight.Skills); err != nil {
+					slog.Warn("更新技能失败", "file", diff.FileName, "error", err)
+				}
+				mu.Unlock()
+
+				atomic.AddInt32(&analyzed, 1)
+				slog.Info("Diff 分析完成", "worker", workerID, "file", diff.FileName)
+			}
+		}(i)
 	}
 
-	return analyzed, nil
+	wg.Wait()
+	return int(analyzed), nil
 }
 
 // GenerateDailySummary 生成每日总结
@@ -122,9 +165,33 @@ func (s *AIService) GenerateDailySummary(ctx context.Context, date string) (*mod
 		return nil, err
 	}
 
+	// 尝试从 RAG 获取相关历史记忆
+	var historyMemories []string
+	if s.ragService != nil {
+		// 构建查询文本
+		var queryParts []string
+		for _, diff := range diffs {
+			if diff.AIInsight != "" {
+				queryParts = append(queryParts, diff.AIInsight)
+			} else if diff.Language != "" {
+				queryParts = append(queryParts, diff.Language)
+			}
+		}
+		if len(queryParts) > 0 {
+			query := "编程 " + queryParts[0]
+			if results, err := s.ragService.Query(ctx, query, 3); err == nil {
+				for _, r := range results {
+					historyMemories = append(historyMemories, r.Content)
+				}
+				slog.Debug("获取历史记忆", "count", len(historyMemories))
+			}
+		}
+	}
+
 	// 构建请求
 	req := &ai.DailySummaryRequest{
-		Date: date,
+		Date:            date,
+		HistoryMemories: historyMemories,
 	}
 
 	// 添加窗口事件
@@ -141,6 +208,7 @@ func (s *AIService) GenerateDailySummary(ctx context.Context, date string) (*mod
 			FileName:     diff.FileName,
 			Language:     diff.Language,
 			Insight:      diff.AIInsight,
+			DiffContent:  diff.DiffContent,
 			LinesChanged: diff.LinesAdded + diff.LinesDeleted,
 		})
 	}
@@ -168,7 +236,7 @@ func (s *AIService) GenerateDailySummary(ctx context.Context, date string) (*mod
 
 	// 计算编码时长
 	for _, stat := range appStats {
-		if isCodeEditor(stat.AppName) {
+		if isCodeEditorInList(stat.AppName, DefaultCodeEditors) {
 			summary.TotalCoding += int(stat.TotalDuration / 60)
 		}
 	}
@@ -180,27 +248,23 @@ func (s *AIService) GenerateDailySummary(ctx context.Context, date string) (*mod
 	return summary, nil
 }
 
-// isCodeEditor 判断是否是代码编辑器
-func isCodeEditor(appName string) bool {
-	editors := []string{
-		"Code.exe", "code.exe", // VS Code
-		"Antigravity.exe",        // Antigravity IDE
-		"devenv.exe",             // Visual Studio
-		"idea64.exe", "idea.exe", // IntelliJ
-		"goland64.exe", "goland.exe", // GoLand
-		"pycharm64.exe", "pycharm.exe", // PyCharm
-		"webstorm64.exe", "webstorm.exe", // WebStorm
-		"vim.exe", "nvim.exe", // Vim
-		"sublime_text.exe", // Sublime
-		"notepad++.exe",    // Notepad++
-	}
-
+// isCodeEditorInList 判断是否是代码编辑器（使用提供的列表）
+func isCodeEditorInList(appName string, editors []string) bool {
 	for _, editor := range editors {
 		if appName == editor {
 			return true
 		}
 	}
 	return false
+}
+
+// DefaultCodeEditors 默认代码编辑器列表（配置未提供时使用）
+var DefaultCodeEditors = []string{
+	"Code.exe", "code.exe", "Cursor.exe", "cursor.exe",
+	"Antigravity.exe", "antigravity.exe",
+	"idea64.exe", "idea.exe", "goland64.exe", "pycharm64.exe", "webstorm64.exe",
+	"devenv.exe", "Zed.exe", "Fleet.exe", "sublime_text.exe", "notepad++.exe",
+	"vim.exe", "nvim.exe", "emacs.exe",
 }
 
 // GenerateWeeklySummary 生成周报（代理到 analyzer）
