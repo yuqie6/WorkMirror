@@ -109,25 +109,6 @@ func (s *SkillService) UpdateSkillsFromDiffsWithCategory(ctx context.Context, di
 	return nil
 }
 
-// addSkillExpWithCategory 给技能添加经验（使用指定分类）
-func (s *SkillService) addSkillExpWithCategory(ctx context.Context, skillKey string, exp float64, category string) error {
-	skill, err := s.skillRepo.GetByKey(ctx, skillKey)
-	if err != nil {
-		return err
-	}
-
-	if skill == nil {
-		// 创建新技能（使用 AI 决定的分类）
-		skill = model.NewSkillNode(skillKey, s.getSkillName(skillKey), category)
-	} else if skill.Category != category && category != "" && category != "other" {
-		// 如果 AI 返回了更具体的分类，更新分类
-		skill.Category = category
-	}
-
-	skill.AddExp(exp)
-	return s.skillRepo.Upsert(ctx, skill)
-}
-
 // addSkillExp 给技能添加经验
 func (s *SkillService) addSkillExp(ctx context.Context, skillKey string, exp float64) error {
 	skill, err := s.skillRepo.GetByKey(ctx, skillKey)

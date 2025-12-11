@@ -14,8 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yuqie6/mirror/internal/model"
 	_ "github.com/glebarez/sqlite"
+	"github.com/yuqie6/mirror/internal/model"
 )
 
 // BrowserCollector 浏览器历史采集器
@@ -48,12 +48,12 @@ func NewBrowserCollector(cfg *BrowserCollectorConfig) (*BrowserCollector, error)
 	}
 
 	if historyPath == "" {
-		return nil, fmt.Errorf("未找到 Chrome History 文件")
+		return nil, fmt.Errorf("未找到 chrome history 文件")
 	}
 
 	// 检查文件是否存在
 	if _, err := os.Stat(historyPath); os.IsNotExist(err) {
-		return nil, fmt.Errorf("Chrome History 文件不存在: %s", historyPath)
+		return nil, fmt.Errorf("chrome history 文件不存在: %s", historyPath)
 	}
 
 	pollInterval := cfg.PollInterval

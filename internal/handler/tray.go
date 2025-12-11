@@ -163,8 +163,8 @@ func OpenUI() {
 	slog.Warn("未找到 mirror-ui.exe", "searched_paths", possiblePaths)
 }
 
-// getDefaultIcon 返回默认图标
-func getDefaultIcon() []byte {
+// _getDefaultIcon 返回默认图标（保留以供将来使用）
+func _getDefaultIcon() []byte {
 	// 简单的 16x16 ICO 图标（蓝色方块）
 	// 实际项目应该嵌入真正的图标文件
 	return []byte{
