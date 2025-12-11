@@ -1,0 +1,241 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Inter", "Nunito", sans-serif;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  min-height: 100vh;
+  color: #e4e4e4;
+}
+
+#App {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.header {
+  text-align: center;
+  padding: 30px 0;
+}
+
+.header h1 {
+  font-size: 2.5rem;
+  background: linear-gradient(90deg, #4facfe, #00f2fe);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.subtitle {
+  color: #8892b0;
+  margin-top: 8px;
+}
+
+.tabs {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.tabs button {
+  padding: 12px 24px;
+  border: none;
+  background: rgba(255, 255, 255, 0.05);
+  color: #8892b0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 1rem;
+}
+
+.tabs button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.tabs button.active {
+  background: linear-gradient(135deg, #4facfe, #00f2fe);
+  color: #1a1a2e;
+  font-weight: 600;
+}
+
+.content {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 16px;
+  padding: 24px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.btn-primary {
+  padding: 16px 32px;
+  font-size: 1.1rem;
+  border: none;
+  background: linear-gradient(135deg, #4facfe, #00f2fe);
+  color: #1a1a2e;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(79, 172, 254, 0.4);
+}
+
+.loading {
+  text-align: center;
+  padding: 40px;
+  font-size: 1.2rem;
+  color: #4facfe;
+}
+
+.error {
+  text-align: center;
+  padding: 20px;
+  color: #ff6b6b;
+  background: rgba(255, 107, 107, 0.1);
+  border-radius: 8px;
+}
+
+.summary-panel {
+  text-align: center;
+}
+
+.summary-content {
+  text-align: left;
+}
+
+.summary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.summary-header h2 {
+  color: #4facfe;
+}
+
+.stats {
+  display: flex;
+  gap: 20px;
+}
+
+.stats span {
+  background: rgba(79, 172, 254, 0.1);
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+}
+
+.section {
+  margin-bottom: 20px;
+}
+
+.section h3 {
+  color: #8892b0;
+  font-size: 0.9rem;
+  margin-bottom: 8px;
+}
+
+.section p {
+  line-height: 1.6;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tag {
+  background: linear-gradient(
+    135deg,
+    rgba(79, 172, 254, 0.2),
+    rgba(0, 242, 254, 0.2)
+  );
+  padding: 6px 14px;
+  border-radius: 16px;
+  font-size: 0.85rem;
+}
+
+.skills-panel h2 {
+  margin-bottom: 20px;
+  color: #4facfe;
+}
+
+.empty {
+  text-align: center;
+  color: #8892b0;
+  padding: 40px;
+}
+
+.skill-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.skill-card {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 16px;
+  transition: transform 0.2s ease;
+}
+
+.skill-card:hover {
+  transform: translateY(-4px);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.skill-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.skill-name {
+  font-weight: 600;
+  color: #e4e4e4;
+}
+
+.skill-category {
+  font-size: 0.8rem;
+  color: #8892b0;
+  margin-bottom: 8px;
+}
+
+.skill-level {
+  color: #4facfe;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.progress-bar {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4facfe, #00f2fe);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.skill-exp {
+  font-size: 0.8rem;
+  color: #8892b0;
+}
