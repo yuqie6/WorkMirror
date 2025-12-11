@@ -1,0 +1,100 @@
+package repository
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/danielsclee/mirror/internal/model"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+)
+
+// SkillRepository 技能仓储
+type SkillRepository struct {
+	db *gorm.DB
+}
+
+// NewSkillRepository 创建仓储
+func NewSkillRepository(db *gorm.DB) *SkillRepository {
+	return &SkillRepository{db: db}
+}
+
+// GetByKey 根据 Key 获取技能
+func (r *SkillRepository) GetByKey(ctx context.Context, key string) (*model.SkillNode, error) {
+	var skill model.SkillNode
+	err := r.db.WithContext(ctx).Where("key = ?", key).First(&skill).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("查询技能失败: %w", err)
+	}
+	return &skill, nil
+}
+
+// Upsert 插入或更新技能
+func (r *SkillRepository) Upsert(ctx context.Context, skill *model.SkillNode) error {
+	return r.db.WithContext(ctx).Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "key"}},
+		UpdateAll: true,
+	}).Create(skill).Error
+}
+
+// GetAll 获取所有技能
+func (r *SkillRepository) GetAll(ctx context.Context) ([]model.SkillNode, error) {
+	var skills []model.SkillNode
+	err := r.db.WithContext(ctx).Order("level DESC, exp DESC").Find(&skills).Error
+	if err != nil {
+		return nil, fmt.Errorf("查询技能失败: %w", err)
+	}
+	return skills, nil
+}
+
+// GetByCategory 根据分类获取技能
+func (r *SkillRepository) GetByCategory(ctx context.Context, category string) ([]model.SkillNode, error) {
+	var skills []model.SkillNode
+	err := r.db.WithContext(ctx).
+		Where("category = ?", category).
+		Order("level DESC, exp DESC").
+		Find(&skills).Error
+	if err != nil {
+		return nil, fmt.Errorf("查询技能失败: %w", err)
+	}
+	return skills, nil
+}
+
+// GetTopSkills 获取排名前 N 的技能
+func (r *SkillRepository) GetTopSkills(ctx context.Context, limit int) ([]model.SkillNode, error) {
+	var skills []model.SkillNode
+	err := r.db.WithContext(ctx).
+		Order("level DESC, exp DESC").
+		Limit(limit).
+		Find(&skills).Error
+	if err != nil {
+		return nil, fmt.Errorf("查询技能失败: %w", err)
+	}
+	return skills, nil
+}
+
+// GetRecentlyActive 获取最近活跃的技能
+func (r *SkillRepository) GetRecentlyActive(ctx context.Context, limit int) ([]model.SkillNode, error) {
+	var skills []model.SkillNode
+	err := r.db.WithContext(ctx).
+		Order("last_active DESC").
+		Limit(limit).
+		Find(&skills).Error
+	if err != nil {
+		return nil, fmt.Errorf("查询技能失败: %w", err)
+	}
+	return skills, nil
+}
+
+// Count 统计技能数量
+func (r *SkillRepository) Count(ctx context.Context) (int64, error) {
+	var count int64
+	err := r.db.WithContext(ctx).Model(&model.SkillNode{}).Count(&count).Error
+	if err != nil {
+		return 0, fmt.Errorf("统计技能失败: %w", err)
+	}
+	return count, nil
+}

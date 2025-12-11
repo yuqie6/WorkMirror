@@ -55,6 +55,7 @@ func main() {
 	rootCmd.AddCommand(reportCmd())
 	rootCmd.AddCommand(analyzeCmd())
 	rootCmd.AddCommand(statsCmd())
+	rootCmd.AddCommand(skillsCmd())
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
@@ -237,6 +238,102 @@ func statsCmd() *cobra.Command {
 	}
 
 	cmd.Flags().IntVarP(&days, "days", "d", 7, "统计天数")
+
+	return cmd
+}
+
+// skillsCmd 技能树命令
+func skillsCmd() *cobra.Command {
+	var top int
+
+	cmd := &cobra.Command{
+		Use:   "skills",
+		Short: "查看技能树",
+		Run: func(cmd *cobra.Command, args []string) {
+			ctx := context.Background()
+
+			skillRepo := repository.NewSkillRepository(db.DB)
+			diffRepo := repository.NewDiffRepository(db.DB)
+			skillService := service.NewSkillService(skillRepo, diffRepo)
+
+			// 获取技能树
+			tree, err := skillService.GetSkillTree(ctx)
+			if err != nil {
+				fmt.Printf("❌ 获取技能树失败: %v\n", err)
+				os.Exit(1)
+			}
+
+			if tree.TotalSkills == 0 {
+				fmt.Println("📚 还没有技能记录")
+				fmt.Println("   使用 'mirror analyze' 分析代码变更来积累技能")
+				return
+			}
+
+			fmt.Printf("🌳 技能树 (共 %d 个技能)\n", tree.TotalSkills)
+			fmt.Println("═══════════════════════════════════════")
+
+			// 按分类显示
+			categoryNames := map[string]string{
+				"language": "💻 编程语言",
+				"frontend": "🎨 前端",
+				"backend":  "⚙️ 后端",
+				"devops":   "🔧 DevOps",
+				"data":     "📊 数据",
+				"skill":    "🎯 技能",
+				"other":    "📦 其他",
+			}
+
+			for category, skills := range tree.Categories {
+				if len(skills) == 0 {
+					continue
+				}
+
+				categoryName := categoryNames[category]
+				if categoryName == "" {
+					categoryName = "📦 " + category
+				}
+
+				fmt.Printf("\n%s\n", categoryName)
+
+				count := 0
+				for _, skill := range skills {
+					if top > 0 && count >= top {
+						break
+					}
+
+					// 进度条
+					barWidth := 20
+					filled := int(skill.Progress / 100 * float64(barWidth))
+					bar := ""
+					for i := 0; i < barWidth; i++ {
+						if i < filled {
+							bar += "█"
+						} else {
+							bar += "░"
+						}
+					}
+
+					trend := ""
+					switch skill.Trend {
+					case "up":
+						trend = "↑"
+					case "down":
+						trend = "↓"
+					default:
+						trend = "→"
+					}
+
+					fmt.Printf("  %s Lv.%d %s [%s] %.0f%%\n",
+						skill.Name, skill.Level, trend, bar, skill.Progress)
+					count++
+				}
+			}
+
+			fmt.Println("\n═══════════════════════════════════════")
+		},
+	}
+
+	cmd.Flags().IntVarP(&top, "top", "n", 0, "每个分类显示前 N 个技能 (0=全部)")
 
 	return cmd
 }
