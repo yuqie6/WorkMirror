@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/yuqie6/mirror/internal/bootstrap"
@@ -14,9 +15,44 @@ import (
 
 // App struct
 type App struct {
+	mu   sync.RWMutex
 	ctx  context.Context
 	cfg  *config.Config
 	core *bootstrap.Core
+}
+
+// SettingsDTO 设置页读取 DTO
+type SettingsDTO struct {
+	ConfigPath string `json:"config_path"`
+
+	DeepSeekAPIKeySet bool   `json:"deepseek_api_key_set"`
+	DeepSeekBaseURL   string `json:"deepseek_base_url"`
+	DeepSeekModel     string `json:"deepseek_model"`
+
+	SiliconFlowAPIKeySet      bool   `json:"siliconflow_api_key_set"`
+	SiliconFlowBaseURL        string `json:"siliconflow_base_url"`
+	SiliconFlowEmbeddingModel string `json:"siliconflow_embedding_model"`
+	SiliconFlowRerankerModel  string `json:"siliconflow_reranker_model"`
+
+	DBPath             string   `json:"db_path"`
+	DiffWatchPaths     []string `json:"diff_watch_paths"`
+	BrowserHistoryPath string   `json:"browser_history_path"`
+}
+
+// SaveSettingsRequestDTO 设置页保存 DTO（指针表示可选字段）
+type SaveSettingsRequestDTO struct {
+	DeepSeekAPIKey  *string `json:"deepseek_api_key"`
+	DeepSeekBaseURL *string `json:"deepseek_base_url"`
+	DeepSeekModel   *string `json:"deepseek_model"`
+
+	SiliconFlowAPIKey         *string `json:"siliconflow_api_key"`
+	SiliconFlowBaseURL        *string `json:"siliconflow_base_url"`
+	SiliconFlowEmbeddingModel *string `json:"siliconflow_embedding_model"`
+	SiliconFlowRerankerModel  *string `json:"siliconflow_reranker_model"`
+
+	DBPath             *string   `json:"db_path"`
+	DiffWatchPaths     *[]string `json:"diff_watch_paths"`
+	BrowserHistoryPath *string   `json:"browser_history_path"`
 }
 
 // NewApp creates a new App application struct
@@ -26,6 +62,9 @@ func NewApp() *App {
 
 // startup is called when the app starts
 func (a *App) startup(ctx context.Context) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
 	a.ctx = ctx
 
 	core, err := bootstrap.NewCore("")
@@ -37,6 +76,103 @@ func (a *App) startup(ctx context.Context) {
 	}
 	a.core = core
 	a.cfg = core.Cfg
+}
+
+func (a *App) GetSettings() (*SettingsDTO, error) {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+
+	if a.core == nil || a.core.Cfg == nil {
+		return nil, errors.New("配置未初始化")
+	}
+
+	path, err := config.DefaultConfigPath()
+	if err != nil {
+		return nil, err
+	}
+
+	cfg := a.core.Cfg
+	dto := &SettingsDTO{
+		ConfigPath: path,
+
+		DeepSeekAPIKeySet: cfg.AI.DeepSeek.APIKey != "",
+		DeepSeekBaseURL:   cfg.AI.DeepSeek.BaseURL,
+		DeepSeekModel:     cfg.AI.DeepSeek.Model,
+
+		SiliconFlowAPIKeySet:      cfg.AI.SiliconFlow.APIKey != "",
+		SiliconFlowBaseURL:        cfg.AI.SiliconFlow.BaseURL,
+		SiliconFlowEmbeddingModel: cfg.AI.SiliconFlow.EmbeddingModel,
+		SiliconFlowRerankerModel:  cfg.AI.SiliconFlow.RerankerModel,
+
+		DBPath:             cfg.Storage.DBPath,
+		DiffWatchPaths:     append([]string(nil), cfg.Diff.WatchPaths...),
+		BrowserHistoryPath: cfg.Browser.HistoryPath,
+	}
+	return dto, nil
+}
+
+func (a *App) SaveSettings(req SaveSettingsRequestDTO) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	if a.core == nil || a.core.Cfg == nil {
+		return errors.New("配置未初始化")
+	}
+
+	path, err := config.DefaultConfigPath()
+	if err != nil {
+		return err
+	}
+
+	next := *a.core.Cfg
+	if req.DeepSeekAPIKey != nil {
+		next.AI.DeepSeek.APIKey = *req.DeepSeekAPIKey
+	}
+	if req.DeepSeekBaseURL != nil {
+		next.AI.DeepSeek.BaseURL = *req.DeepSeekBaseURL
+	}
+	if req.DeepSeekModel != nil {
+		next.AI.DeepSeek.Model = *req.DeepSeekModel
+	}
+
+	if req.SiliconFlowAPIKey != nil {
+		next.AI.SiliconFlow.APIKey = *req.SiliconFlowAPIKey
+	}
+	if req.SiliconFlowBaseURL != nil {
+		next.AI.SiliconFlow.BaseURL = *req.SiliconFlowBaseURL
+	}
+	if req.SiliconFlowEmbeddingModel != nil {
+		next.AI.SiliconFlow.EmbeddingModel = *req.SiliconFlowEmbeddingModel
+	}
+	if req.SiliconFlowRerankerModel != nil {
+		next.AI.SiliconFlow.RerankerModel = *req.SiliconFlowRerankerModel
+	}
+
+	if req.DBPath != nil {
+		next.Storage.DBPath = *req.DBPath
+	}
+	if req.DiffWatchPaths != nil {
+		next.Diff.WatchPaths = append([]string(nil), (*req.DiffWatchPaths)...)
+	}
+	if req.BrowserHistoryPath != nil {
+		next.Browser.HistoryPath = *req.BrowserHistoryPath
+	}
+
+	if err := config.WriteFile(path, &next); err != nil {
+		return err
+	}
+
+	newCore, err := bootstrap.NewCore(path)
+	if err != nil {
+		return err
+	}
+
+	oldCore := a.core
+	a.core = newCore
+	a.cfg = newCore.Cfg
+
+	_ = oldCore.Close()
+	return nil
 }
 
 // DailySummaryDTO 每日总结 DTO
@@ -52,6 +188,9 @@ type DailySummaryDTO struct {
 
 // GetTodaySummary 获取今日总结
 func (a *App) GetTodaySummary() (*DailySummaryDTO, error) {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+
 	// 添加超时防止长时间阻塞
 	ctx, cancel := context.WithTimeout(a.ctx, 30*time.Second)
 	defer cancel()
@@ -86,6 +225,9 @@ type SummaryIndexDTO struct {
 
 // ListSummaryIndex 获取所有已生成的日报索引（只返回有数据的日期）
 func (a *App) ListSummaryIndex(limit int) ([]SummaryIndexDTO, error) {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+
 	if a.core == nil || a.core.Repos.Summary == nil {
 		return nil, errors.New("总结仓储未初始化")
 	}
@@ -116,6 +258,9 @@ func (a *App) ListSummaryIndex(limit int) ([]SummaryIndexDTO, error) {
 
 // GetDailySummary 获取指定日期总结（优先读取缓存，必要时生成）
 func (a *App) GetDailySummary(date string) (*DailySummaryDTO, error) {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+
 	ctx, cancel := context.WithTimeout(a.ctx, 30*time.Second)
 	defer cancel()
 
@@ -172,6 +317,9 @@ func normalizeToMonthStart(t time.Time) time.Time {
 // GetPeriodSummary 生成周/月汇总（带缓存，月汇总基于周汇总）
 // startDate 可选：指定起始日期，为空则使用当前周/月
 func (a *App) GetPeriodSummary(periodType string, startDateStr string) (*PeriodSummaryDTO, error) {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+
 	if a.core == nil || a.core.Services.AI == nil {
 		return nil, errors.New("AI 服务未初始化")
 	}
@@ -322,6 +470,9 @@ type PeriodSummaryIndexDTO struct {
 
 // ListPeriodSummaryIndex 获取历史周/月汇总列表
 func (a *App) ListPeriodSummaryIndex(periodType string, limit int) ([]PeriodSummaryIndexDTO, error) {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+
 	if a.core == nil || a.core.Repos.PeriodSummary == nil {
 		return nil, errors.New("仓储未初始化")
 	}
@@ -372,6 +523,9 @@ type SkillEvidenceDTO struct {
 
 // GetSkillTree 获取技能树
 func (a *App) GetSkillTree() ([]SkillNodeDTO, error) {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+
 	if a.core == nil || a.core.Services.Skills == nil {
 		return nil, errors.New("技能服务未初始化")
 	}
@@ -402,6 +556,9 @@ func (a *App) GetSkillTree() ([]SkillNodeDTO, error) {
 
 // GetSkillEvidence 获取技能最近证据（Phase B drill-down）
 func (a *App) GetSkillEvidence(skillKey string) ([]SkillEvidenceDTO, error) {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+
 	if a.core == nil || a.core.Services.Skills == nil {
 		return nil, errors.New("技能服务未初始化")
 	}
@@ -451,6 +608,9 @@ type SkillTrendDTO struct {
 
 // GetTrends 获取趋势报告
 func (a *App) GetTrends(days int) (*TrendReportDTO, error) {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+
 	if a.core == nil || a.core.Services.Trends == nil {
 		return nil, errors.New("趋势服务未初始化")
 	}
@@ -505,6 +665,9 @@ type AppStatsDTO struct {
 
 // GetAppStats 获取应用统计
 func (a *App) GetAppStats() ([]AppStatsDTO, error) {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+
 	now := time.Now()
 	startTime := now.AddDate(0, 0, -7).UnixMilli()
 	endTime := now.UnixMilli()
@@ -544,6 +707,9 @@ type DiffDetailDTO struct {
 
 // GetDiffDetail 获取 Diff 详情
 func (a *App) GetDiffDetail(id int64) (*DiffDetailDTO, error) {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+
 	if a.core == nil || a.core.Repos.Diff == nil {
 		return nil, errors.New("Diff 仓储未初始化")
 	}

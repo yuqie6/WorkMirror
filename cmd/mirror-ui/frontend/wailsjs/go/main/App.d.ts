@@ -10,6 +10,8 @@ export function GetDiffDetail(arg1:number):Promise<main.DiffDetailDTO>;
 
 export function GetPeriodSummary(arg1:string,arg2:string):Promise<main.PeriodSummaryDTO>;
 
+export function GetSettings():Promise<main.SettingsDTO>;
+
 export function GetSkillEvidence(arg1:string):Promise<Array<main.SkillEvidenceDTO>>;
 
 export function GetSkillTree():Promise<Array<main.SkillNodeDTO>>;
@@ -21,3 +23,5 @@ export function GetTrends(arg1:number):Promise<main.TrendReportDTO>;
 export function ListPeriodSummaryIndex(arg1:string,arg2:number):Promise<Array<main.PeriodSummaryIndexDTO>>;
 
 export function ListSummaryIndex(arg1:number):Promise<Array<main.SummaryIndexDTO>>;
+
+export function SaveSettings(arg1:main.SaveSettingsRequestDTO):Promise<void>;

@@ -3,8 +3,8 @@ import TopNav from './TopNav';
 
 interface MainLayoutProps {
     children: React.ReactNode;
-    activeTab: 'summary' | 'skills' | 'trends';
-    onTabChange: (tab: 'summary' | 'skills' | 'trends') => void;
+    activeTab: 'summary' | 'skills' | 'trends' | 'settings';
+    onTabChange: (tab: 'summary' | 'skills' | 'trends' | 'settings') => void;
 }
 
 const MainLayout: React.FC<MainLayoutProps> = ({ children, activeTab, onTabChange }) => {

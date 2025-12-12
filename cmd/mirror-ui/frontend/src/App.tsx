@@ -6,9 +6,10 @@ import MainLayout from './components/layout/MainLayout';
 import SummaryView, { DailySummary, AppStat, SummaryIndex, PeriodSummary } from './components/dashboard/SummaryView';
 import SkillView, { SkillNode } from './components/skills/SkillView';
 import TrendsView from './components/dashboard/TrendsView';
+import SettingsView from './components/settings/SettingsView';
 
 function App() {
-    const [activeTab, setActiveTab] = useState<'summary' | 'skills' | 'trends'>('summary');
+    const [activeTab, setActiveTab] = useState<'summary' | 'skills' | 'trends' | 'settings'>('summary');
     
     // 数据状态
     const [summary, setSummary] = useState<DailySummary | null>(null);
@@ -118,6 +119,8 @@ function App() {
                 return <SkillView skills={skills} />;
             case 'trends':
                 return <TrendsView />;
+            case 'settings':
+                return <SettingsView />;
             default:
                 return null;
         }

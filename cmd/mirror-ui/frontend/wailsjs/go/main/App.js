@@ -18,6 +18,10 @@ export function GetPeriodSummary(arg1, arg2) {
   return window['go']['main']['App']['GetPeriodSummary'](arg1, arg2);
 }
 
+export function GetSettings() {
+  return window['go']['main']['App']['GetSettings']();
+}
+
 export function GetSkillEvidence(arg1) {
   return window['go']['main']['App']['GetSkillEvidence'](arg1);
 }
@@ -40,4 +44,8 @@ export function ListPeriodSummaryIndex(arg1, arg2) {
 
 export function ListSummaryIndex(arg1) {
   return window['go']['main']['App']['ListSummaryIndex'](arg1);
+}
+
+export function SaveSettings(arg1) {
+  return window['go']['main']['App']['SaveSettings'](arg1);
 }

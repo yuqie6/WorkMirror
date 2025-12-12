@@ -130,6 +130,68 @@ export namespace main {
 	        this.end_date = source["end_date"];
 	    }
 	}
+	export class SaveSettingsRequestDTO {
+	    deepseek_api_key?: string;
+	    deepseek_base_url?: string;
+	    deepseek_model?: string;
+	    siliconflow_api_key?: string;
+	    siliconflow_base_url?: string;
+	    siliconflow_embedding_model?: string;
+	    siliconflow_reranker_model?: string;
+	    db_path?: string;
+	    diff_watch_paths?: string[];
+	    browser_history_path?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SaveSettingsRequestDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.deepseek_api_key = source["deepseek_api_key"];
+	        this.deepseek_base_url = source["deepseek_base_url"];
+	        this.deepseek_model = source["deepseek_model"];
+	        this.siliconflow_api_key = source["siliconflow_api_key"];
+	        this.siliconflow_base_url = source["siliconflow_base_url"];
+	        this.siliconflow_embedding_model = source["siliconflow_embedding_model"];
+	        this.siliconflow_reranker_model = source["siliconflow_reranker_model"];
+	        this.db_path = source["db_path"];
+	        this.diff_watch_paths = source["diff_watch_paths"];
+	        this.browser_history_path = source["browser_history_path"];
+	    }
+	}
+	export class SettingsDTO {
+	    config_path: string;
+	    deepseek_api_key_set: boolean;
+	    deepseek_base_url: string;
+	    deepseek_model: string;
+	    siliconflow_api_key_set: boolean;
+	    siliconflow_base_url: string;
+	    siliconflow_embedding_model: string;
+	    siliconflow_reranker_model: string;
+	    db_path: string;
+	    diff_watch_paths: string[];
+	    browser_history_path: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SettingsDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.config_path = source["config_path"];
+	        this.deepseek_api_key_set = source["deepseek_api_key_set"];
+	        this.deepseek_base_url = source["deepseek_base_url"];
+	        this.deepseek_model = source["deepseek_model"];
+	        this.siliconflow_api_key_set = source["siliconflow_api_key_set"];
+	        this.siliconflow_base_url = source["siliconflow_base_url"];
+	        this.siliconflow_embedding_model = source["siliconflow_embedding_model"];
+	        this.siliconflow_reranker_model = source["siliconflow_reranker_model"];
+	        this.db_path = source["db_path"];
+	        this.diff_watch_paths = source["diff_watch_paths"];
+	        this.browser_history_path = source["browser_history_path"];
+	    }
+	}
 	export class SkillEvidenceDTO {
 	    source: string;
 	    evidence_id: number;

@@ -1,8 +1,8 @@
 import React from 'react';
 
 interface TopNavProps {
-    activeTab: 'summary' | 'skills' | 'trends';
-    onTabChange: (tab: 'summary' | 'skills' | 'trends') => void;
+    activeTab: 'summary' | 'skills' | 'trends' | 'settings';
+    onTabChange: (tab: 'summary' | 'skills' | 'trends' | 'settings') => void;
 }
 
 const TopNav: React.FC<TopNavProps> = ({ activeTab, onTabChange }) => {
@@ -10,6 +10,7 @@ const TopNav: React.FC<TopNavProps> = ({ activeTab, onTabChange }) => {
         { id: 'summary', label: '今日总结' },
         { id: 'skills', label: '技能树' },
         { id: 'trends', label: '趋势分析' },
+        { id: 'settings', label: '设置' },
     ];
 
     return (

@@ -6,8 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/yuqie6/mirror/internal/model"
 	"github.com/glebarez/sqlite" // 纯 Go SQLite 驱动
+	"github.com/yuqie6/mirror/internal/model"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
@@ -76,6 +76,7 @@ func autoMigrate(db *gorm.DB) error {
 		&model.SkillNode{},
 		&model.Diff{},
 		&model.DailySummary{},
+		&model.PeriodSummary{},
 		&model.BrowserEvent{},
 	)
 }
