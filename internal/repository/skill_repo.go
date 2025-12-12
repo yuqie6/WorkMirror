@@ -121,3 +121,29 @@ func (r *SkillRepository) UpsertBatch(ctx context.Context, skills []*model.Skill
 		return nil
 	})
 }
+
+// GetByParent 获取某个技能的所有子技能
+func (r *SkillRepository) GetByParent(ctx context.Context, parentKey string) ([]model.SkillNode, error) {
+	var skills []model.SkillNode
+	err := r.db.WithContext(ctx).
+		Where("parent_key = ?", parentKey).
+		Order("level DESC, exp DESC").
+		Find(&skills).Error
+	if err != nil {
+		return nil, fmt.Errorf("查询子技能失败: %w", err)
+	}
+	return skills, nil
+}
+
+// GetTopLevel 获取所有顶级技能（没有父技能）
+func (r *SkillRepository) GetTopLevel(ctx context.Context) ([]model.SkillNode, error) {
+	var skills []model.SkillNode
+	err := r.db.WithContext(ctx).
+		Where("parent_key = '' OR parent_key IS NULL").
+		Order("category, level DESC, exp DESC").
+		Find(&skills).Error
+	if err != nil {
+		return nil, fmt.Errorf("查询顶级技能失败: %w", err)
+	}
+	return skills, nil
+}

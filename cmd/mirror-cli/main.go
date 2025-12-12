@@ -60,10 +60,84 @@ func main() {
 	rootCmd.AddCommand(skillsCmd())
 	rootCmd.AddCommand(trendsCmd())
 	rootCmd.AddCommand(queryCmd())
+	rootCmd.AddCommand(cleanupSkillsCmd())
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
 	}
+}
+
+// cleanupSkillsCmd 清理技能数据命令
+func cleanupSkillsCmd() *cobra.Command {
+	var dryRun bool
+	var deleteAll bool
+
+	cmd := &cobra.Command{
+		Use:   "cleanup-skills",
+		Short: "查看和清理技能数据（删除旧格式条目）",
+		Run: func(cmd *cobra.Command, args []string) {
+			ctx := context.Background()
+			skillRepo := repository.NewSkillRepository(db.DB)
+
+			skills, err := skillRepo.GetAll(ctx)
+			if err != nil {
+				fmt.Printf("❌ 获取技能失败: %v\n", err)
+				return
+			}
+
+			fmt.Printf("📊 当前共有 %d 个技能条目\n\n", len(skills))
+
+			// 分类统计
+			oldFormat := []model.SkillNode{}
+			newFormat := []model.SkillNode{}
+
+			for _, s := range skills {
+				if strings.HasPrefix(s.Key, "lang.") || strings.HasPrefix(s.Key, "skill.") {
+					oldFormat = append(oldFormat, s)
+				} else {
+					newFormat = append(newFormat, s)
+				}
+			}
+
+			fmt.Println("=== 新格式条目 ===")
+			for _, s := range newFormat {
+				parent := ""
+				if s.ParentKey != "" {
+					parent = fmt.Sprintf(" → %s", s.ParentKey)
+				}
+				fmt.Printf("  [%s] %s (%s)%s Lv.%d %.0fXP\n", s.Key, s.Name, s.Category, parent, s.Level, s.Exp)
+			}
+
+			if len(oldFormat) > 0 {
+				fmt.Printf("\n=== 旧格式条目（应删除）===\n")
+				for _, s := range oldFormat {
+					fmt.Printf("  [%s] %s (%s) Lv.%d %.0fXP\n", s.Key, s.Name, s.Category, s.Level, s.Exp)
+				}
+
+				if deleteAll && !dryRun {
+					fmt.Printf("\n🗑️ 正在删除 %d 个旧格式条目...\n", len(oldFormat))
+					for _, s := range oldFormat {
+						if err := db.DB.Delete(&s).Error; err != nil {
+							fmt.Printf("  ❌ 删除 %s 失败: %v\n", s.Key, err)
+						} else {
+							fmt.Printf("  ✅ 已删除 %s\n", s.Key)
+						}
+					}
+				} else if dryRun {
+					fmt.Printf("\n⚠️ 试运行模式，不会真正删除。使用 --delete 参数执行删除。\n")
+				} else {
+					fmt.Printf("\n💡 使用 --delete 参数删除这些旧条目\n")
+				}
+			} else {
+				fmt.Println("\n✅ 没有旧格式条目需要清理")
+			}
+		},
+	}
+
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "试运行，只显示不删除")
+	cmd.Flags().BoolVar(&deleteAll, "delete", false, "删除旧格式条目")
+
+	return cmd
 }
 
 // reportCmd 生成报告命令
@@ -395,25 +469,6 @@ func skillsCmd() *cobra.Command {
 			if err != nil {
 				fmt.Printf("❌ 获取技能树失败: %v\n", err)
 				os.Exit(1)
-			}
-
-			// 自动修复：如果要展示的技能树为空，但数据库中有已分析的 Diff，则尝试同步
-			if tree.TotalSkills == 0 {
-				diffs, err := diffRepo.GetAllAnalyzed(ctx)
-				if err == nil && len(diffs) > 0 {
-					fmt.Printf("🔄 检测到 %d 个已分析的变更但技能树为空，正在同步技能...\n", len(diffs))
-					if err := skillService.UpdateSkillsFromDiffs(ctx, diffs); err == nil {
-						// 同步后重新获取
-						tree, err = skillService.GetSkillTree(ctx)
-						if err != nil {
-							fmt.Printf("❌ 获取技能树失败: %v\n", err)
-							os.Exit(1)
-						}
-						fmt.Printf("✅ 同步完成，发现 %d 个技能\n\n", tree.TotalSkills)
-					} else {
-						fmt.Printf("⚠️ 同步技能失败: %v\n", err)
-					}
-				}
 			}
 
 			if tree.TotalSkills == 0 {

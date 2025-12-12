@@ -115,10 +115,12 @@ type SkillNodeDTO struct {
 	Key        string `json:"key"`
 	Name       string `json:"name"`
 	Category   string `json:"category"`
+	ParentKey  string `json:"parent_key"` // 父技能 Key
 	Level      int    `json:"level"`
 	Experience int    `json:"experience"`
 	Progress   int    `json:"progress"`
 	Status     string `json:"status"`
+	LastActive int64  `json:"last_active"` // 最后活跃时间戳
 }
 
 // GetSkillTree 获取技能树
@@ -135,10 +137,12 @@ func (a *App) GetSkillTree() ([]SkillNodeDTO, error) {
 				Key:        skill.Key,
 				Name:       skill.Name,
 				Category:   category,
+				ParentKey:  skill.ParentKey,
 				Level:      skill.Level,
 				Experience: int(skill.Exp),
 				Progress:   int(skill.Progress),
 				Status:     skill.Trend,
+				LastActive: skill.LastActive.UnixMilli(),
 			})
 		}
 	}

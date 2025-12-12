@@ -25,66 +25,33 @@ func NewSkillService(skillRepo *repository.SkillRepository, diffRepo *repository
 	}
 }
 
-// UpdateSkillsFromDiffs 根据 Diff 更新技能
-func (s *SkillService) UpdateSkillsFromDiffs(ctx context.Context, diffs []model.Diff) error {
-	skillExp := make(map[string]float64) // skill key -> exp to add
-
-	for _, diff := range diffs {
-		// 根据语言添加基础经验
-		langKey := s.getLanguageSkillKey(diff.Language)
-		if langKey != "" {
-			// 基础经验：每次修改 +1，每 10 行变更额外 +1
-			baseExp := 1.0 + float64(diff.LinesAdded+diff.LinesDeleted)/10.0
-			skillExp[langKey] += baseExp
-		}
-
-		// 根据 AI 检测的技能添加经验
-		for _, skill := range diff.SkillsDetected {
-			skillKey := s.normalizeSkillKey(skill)
-			skillExp[skillKey] += 0.5 // 每个检测到的技能 +0.5
-		}
-	}
-
-	// 更新技能
-	for skillKey, exp := range skillExp {
-		if err := s.addSkillExp(ctx, skillKey, exp); err != nil {
-			slog.Warn("更新技能经验失败", "skill", skillKey, "error", err)
-		}
-	}
-
-	return nil
+// GetAllSkills 获取所有技能
+func (s *SkillService) GetAllSkills(ctx context.Context) ([]model.SkillNode, error) {
+	return s.skillRepo.GetAll(ctx)
 }
 
-// UpdateSkillsFromDiffsWithCategory 根据 Diff 和 AI 返回的技能分类更新技能(使用 AI 决定的分类)
+// UpdateSkillsFromDiffsWithCategory 根据 AI 返回的技能信息更新技能（完全 AI 驱动）
 func (s *SkillService) UpdateSkillsFromDiffsWithCategory(ctx context.Context, diffs []model.Diff, skills []ai.SkillWithCategory) error {
-	skillExp := make(map[string]float64)     // skill key -> exp to add
-	skillCategory := make(map[string]string) // skill key -> category
+	if len(skills) == 0 {
+		return nil
+	}
 
+	// 计算每个 diff 的基础经验
+	totalLines := 0
 	for _, diff := range diffs {
-		// 根据语言添加基础经验
-		langKey := s.getLanguageSkillKey(diff.Language)
-		if langKey != "" {
-			baseExp := 1.0 + float64(diff.LinesAdded+diff.LinesDeleted)/10.0
-			skillExp[langKey] += baseExp
-			skillCategory[langKey] = "language"
-		}
+		totalLines += diff.LinesAdded + diff.LinesDeleted
 	}
-
-	// 根据 AI 检测的技能添加经验（使用 AI 决定的分类）
-	for _, skill := range skills {
-		skillKey := s.normalizeSkillKey(skill.Name)
-		skillExp[skillKey] += 0.5
-		skillCategory[skillKey] = skill.Category
-	}
+	baseExp := 1.0 + float64(totalLines)/10.0
 
 	// 收集需要更新的技能
-	skillsToUpdate := make([]*model.SkillNode, 0, len(skillExp))
-	for skillKey, exp := range skillExp {
-		category := skillCategory[skillKey]
-		if category == "" {
-			category = "other"
-		}
+	skillsToUpdate := make([]*model.SkillNode, 0, len(skills))
 
+	for _, aiSkill := range skills {
+		// 统一 Key 格式：小写，空格替换为连字符
+		skillKey := normalizeKey(aiSkill.Name)
+		parentKey := normalizeKey(aiSkill.Parent)
+
+		// 获取或创建技能
 		skill, err := s.skillRepo.GetByKey(ctx, skillKey)
 		if err != nil {
 			slog.Warn("获取技能失败", "skill", skillKey, "error", err)
@@ -92,16 +59,26 @@ func (s *SkillService) UpdateSkillsFromDiffsWithCategory(ctx context.Context, di
 		}
 
 		if skill == nil {
-			skill = model.NewSkillNode(skillKey, s.getSkillName(skillKey), category)
-		} else if skill.Category != category && category != "" && category != "other" {
-			skill.Category = category
+			// 创建新技能（使用 AI 决定的分类和父技能）
+			skill = model.NewSkillNode(skillKey, aiSkill.Name, aiSkill.Category)
+			skill.ParentKey = parentKey
+		} else {
+			// 更新分类和父技能（AI 优先）
+			if aiSkill.Category != "" && aiSkill.Category != "other" {
+				skill.Category = aiSkill.Category
+			}
+			if parentKey != "" {
+				skill.ParentKey = parentKey
+			}
 		}
 
-		skill.AddExp(exp)
+		// 添加经验
+		skill.AddExp(baseExp / float64(len(skills))) // 均分经验
+
 		skillsToUpdate = append(skillsToUpdate, skill)
 	}
 
-	// 使用事务批量更新
+	// 批量更新
 	if err := s.skillRepo.UpsertBatch(ctx, skillsToUpdate); err != nil {
 		return err
 	}
@@ -109,7 +86,17 @@ func (s *SkillService) UpdateSkillsFromDiffsWithCategory(ctx context.Context, di
 	return nil
 }
 
-// addSkillExp 给技能添加经验
+// normalizeKey 统一 Key 格式
+func normalizeKey(name string) string {
+	if name == "" {
+		return ""
+	}
+	key := strings.ToLower(strings.TrimSpace(name))
+	key = strings.ReplaceAll(key, " ", "-")
+	return key
+}
+
+// addSkillExp 给技能添加经验（用于衰减恢复等场景）
 func (s *SkillService) addSkillExp(ctx context.Context, skillKey string, exp float64) error {
 	skill, err := s.skillRepo.GetByKey(ctx, skillKey)
 	if err != nil {
@@ -117,8 +104,8 @@ func (s *SkillService) addSkillExp(ctx context.Context, skillKey string, exp flo
 	}
 
 	if skill == nil {
-		// 创建新技能
-		skill = model.NewSkillNode(skillKey, s.getSkillName(skillKey), s.getSkillCategory(skillKey))
+		// 创建新技能（使用 key 作为名称，分类为 other）
+		skill = model.NewSkillNode(skillKey, model.NormalizeSkillName(skillKey), "other")
 	}
 
 	// 添加经验
@@ -173,6 +160,7 @@ func (s *SkillService) GetSkillTree(ctx context.Context) (*SkillTree, error) {
 		view := SkillNodeView{
 			Key:        skill.Key,
 			Name:       skill.Name,
+			ParentKey:  skill.ParentKey,
 			Level:      skill.Level,
 			Exp:        skill.Exp,
 			ExpToNext:  skill.ExpToNext,
@@ -203,6 +191,7 @@ type SkillTree struct {
 type SkillNodeView struct {
 	Key        string    `json:"key"`
 	Name       string    `json:"name"`
+	ParentKey  string    `json:"parent_key"` // 父技能 Key
 	Level      int       `json:"level"`
 	Exp        float64   `json:"exp"`
 	ExpToNext  float64   `json:"exp_to_next"`
@@ -220,43 +209,4 @@ func (s *SkillService) calculateTrend(skill *model.SkillNode) string {
 		return "down"
 	}
 	return "stable"
-}
-
-// getLanguageSkillKey 获取语言技能 Key
-func (s *SkillService) getLanguageSkillKey(language string) string {
-	if language == "" {
-		return ""
-	}
-	// 直接使用语言名生成 key（AI 已经决定分类）
-	return "lang." + strings.ToLower(language)
-}
-
-// normalizeSkillKey 标准化技能 Key
-func (s *SkillService) normalizeSkillKey(skill string) string {
-	// 简单处理：转小写，空格替换为点
-	key := strings.ToLower(strings.TrimSpace(skill))
-	key = strings.ReplaceAll(key, " ", ".")
-	return "skill." + key
-}
-
-// getSkillName 获取技能显示名称
-func (s *SkillService) getSkillName(skillKey string) string {
-	// 从 key 提取名称并标准化
-	parts := strings.Split(skillKey, ".")
-	name := skillKey
-	if len(parts) > 1 {
-		name = parts[len(parts)-1]
-	}
-	return model.NormalizeSkillName(name)
-}
-
-// getSkillCategory 获取技能分类
-func (s *SkillService) getSkillCategory(skillKey string) string {
-	// 从 key 提取技能名并获取分类
-	parts := strings.Split(skillKey, ".")
-	name := skillKey
-	if len(parts) > 1 {
-		name = parts[len(parts)-1]
-	}
-	return string(model.GetSkillCategory(name))
 }

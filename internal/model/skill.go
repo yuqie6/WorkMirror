@@ -7,13 +7,14 @@ import (
 // SkillNode 技能树节点
 // 数据量级：百级
 type SkillNode struct {
-	Key        string    `gorm:"primaryKey;size:100" json:"key"` // 唯一标识: backend.go
-	Name       string    `gorm:"size:100" json:"name"`           // 显示名: Golang
-	Category   string    `gorm:"size:50;index" json:"category"`  // 分类: backend, frontend, devops
-	Level      int       `gorm:"default:1" json:"level"`         // 当前等级: 1-99
-	Exp        float64   `gorm:"default:0" json:"exp"`           // 当前经验值
-	ExpToNext  float64   `gorm:"default:100" json:"exp_to_next"` // 升级所需经验
-	LastActive int64     `gorm:"index" json:"last_active"`       // 最后一次获得经验的时间
+	Key        string    `gorm:"primaryKey;size:100" json:"key"`   // 唯一标识: go, gin, react
+	Name       string    `gorm:"size:100" json:"name"`             // 显示名: Go, Gin, React
+	Category   string    `gorm:"size:50;index" json:"category"`    // 分类: language, framework, database, devops, tool, concept, other
+	ParentKey  string    `gorm:"size:100;index" json:"parent_key"` // 父技能 Key（AI 决定），如 gin → go
+	Level      int       `gorm:"default:1" json:"level"`           // 当前等级: 1-99
+	Exp        float64   `gorm:"default:0" json:"exp"`             // 当前经验值
+	ExpToNext  float64   `gorm:"default:100" json:"exp_to_next"`   // 升级所需经验
+	LastActive int64     `gorm:"index" json:"last_active"`         // 最后一次获得经验的时间
 	CreatedAt  time.Time `gorm:"autoCreateTime" json:"created_at"`
 	UpdatedAt  time.Time `gorm:"autoUpdateTime" json:"updated_at"`
 }

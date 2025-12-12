@@ -4,58 +4,92 @@
 
 @layer base {
   body {
-    /* 极致黑背景，抗锯齿 */
-    @apply bg-black text-zinc-100 antialiased selection:bg-white/20 selection:text-white;
+    @apply bg-gradient-warm text-gray-900 antialiased;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    min-height: 100vh;
+    background-attachment: fixed;
+  }
+}
+
+@layer components {
+  /* 亮色卡片 - 白色背景 */
+  .card {
+    @apply bg-white rounded-3xl p-6 shadow-card transition-all duration-300;
+  }
+  
+  .card:hover {
+    @apply shadow-card-lg -translate-y-0.5;
+  }
+
+  /* 深色卡片 - 用于主要展示区 */
+  .card-dark {
+    @apply bg-card-dark text-white rounded-3xl p-6 shadow-card-dark overflow-hidden relative;
+  }
+
+  /* 统计卡片 */
+  .stat-card {
+    @apply bg-white rounded-2xl p-5 shadow-card flex flex-col gap-2;
+  }
+
+  /* 顶部导航 */
+  .nav-item {
+    @apply px-4 py-2 text-sm font-medium text-gray-600 rounded-full transition-all duration-200;
+  }
+
+  .nav-item:hover {
+    @apply text-gray-900 bg-white/60;
+  }
+
+  .nav-item.active {
+    @apply bg-white text-gray-900 shadow-sm;
+  }
+
+  /* 金色强调按钮 */
+  .btn-gold {
+    @apply px-6 py-2.5 bg-gradient-gold text-white font-medium rounded-full shadow-lg transition-all duration-200;
+  }
+
+  .btn-gold:hover {
+    @apply shadow-xl -translate-y-0.5;
+  }
+
+  /* 标签/Pills */
+  .pill {
+    @apply px-3 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-600;
+  }
+
+  .pill-active {
+    @apply bg-accent-gold text-white;
   }
 }
 
 @layer utilities {
-  /* Apple 风格玻璃拟态 - 更高可见性 */
-  .glass {
-    @apply bg-white/[0.06] backdrop-blur-2xl border border-white/[0.10] shadow-2xl;
-    box-shadow: 
-      0 8px 32px rgba(0, 0, 0, 0.3),
-      inset 0 1px 0 0 rgba(255, 255, 255, 0.08);
-  }
-  
-  /* 悬停玻璃拟态 */
-  .glass-hover {
-    @apply hover:bg-white/[0.10] hover:border-white/[0.15] transition-all duration-300;
+  /* 渐变文字 */
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-accent-gold to-amber-500;
   }
 
-  /* 激活状态 - Apple 风格蓝色强调 */
-  .glass-active {
-    @apply bg-[#0A84FF] text-white shadow-lg shadow-[#0A84FF]/20 border-transparent font-medium;
-  }
-
-  /* 侧边栏玻璃 */
-  .glass-panel {
-    @apply bg-[#0D0D0D]/80 backdrop-blur-3xl border-r border-white/[0.06];
-  }
-  
-  /* 卡片强调色条 */
-  .accent-bar {
-    @apply absolute left-0 top-6 bottom-6 w-[3px] rounded-full;
-  }
-  
-  /* 呼吸动画 */
-  .animate-pulse-slow {
-    animation: pulse 8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  /* 波浪背景装饰 */
+  .wave-bg {
+    background: linear-gradient(180deg, transparent 0%, rgba(212, 175, 55, 0.1) 100%);
   }
 }
 
-/* 隐藏滚动条但保留功能 (可选，为了极简外观) */
+/* 自定义滚动条 */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: transparent;
+  @apply bg-transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-white/10 rounded-full hover:bg-white/20 transition-colors;
+  @apply bg-gray-300 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-400;
 }

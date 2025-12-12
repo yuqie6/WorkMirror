@@ -18,22 +18,30 @@ func NewDiffAnalyzer(client *DeepSeekClient) *DiffAnalyzer {
 	return &DiffAnalyzer{client: client}
 }
 
-// SkillWithCategory 带分类的技能
+// SkillWithCategory 带分类的技能（AI 返回）
 type SkillWithCategory struct {
-	Name     string `json:"name"`     // 技能名称
-	Category string `json:"category"` // 分类: language/framework/database/devops/tool/concept/other
+	Name     string `json:"name"`             // 技能名称（标准名称如 Go, React）
+	Category string `json:"category"`         // 分类: language/framework/database/devops/tool/concept/other
+	Parent   string `json:"parent,omitempty"` // 父技能名（AI 决定），如 Gin → Go
+}
+
+// SkillInfo 简化的技能信息（传给 AI 作为上下文）
+type SkillInfo struct {
+	Name     string `json:"name"`
+	Category string `json:"category"`
+	Parent   string `json:"parent,omitempty"`
 }
 
 // DiffInsight Diff 解读结果
 type DiffInsight struct {
 	Insight    string              `json:"insight"`    // AI 解读
-	Skills     []SkillWithCategory `json:"skills"`     // 涉及技能（带分类）
+	Skills     []SkillWithCategory `json:"skills"`     // 涉及技能（带分类和层级）
 	Difficulty float64             `json:"difficulty"` // 难度 0-1
 	Category   string              `json:"category"`   // 代码变更分类: learning, refactoring, bugfix, feature
 }
 
-// AnalyzeDiff 分析单个 Diff
-func (a *DiffAnalyzer) AnalyzeDiff(ctx context.Context, filePath, language, diffContent string) (*DiffInsight, error) {
+// AnalyzeDiff 分析单个 Diff（传入当前技能树作为上下文）
+func (a *DiffAnalyzer) AnalyzeDiff(ctx context.Context, filePath, language, diffContent string, existingSkills []SkillInfo) (*DiffInsight, error) {
 	if !a.client.IsConfigured() {
 		return nil, fmt.Errorf("DeepSeek API 未配置")
 	}
@@ -43,40 +51,47 @@ func (a *DiffAnalyzer) AnalyzeDiff(ctx context.Context, filePath, language, diff
 		diffContent = diffContent[:3000] + "\n... (truncated)"
 	}
 
+	// 构建技能树上下文
+	var skillTreeContext strings.Builder
+	if len(existingSkills) > 0 {
+		skillTreeContext.WriteString("\n当前已有技能树：\n")
+		for _, s := range existingSkills {
+			if s.Parent == "" {
+				skillTreeContext.WriteString(fmt.Sprintf("- %s (%s)\n", s.Name, s.Category))
+			} else {
+				skillTreeContext.WriteString(fmt.Sprintf("  - %s → %s (%s)\n", s.Name, s.Parent, s.Category))
+			}
+		}
+		skillTreeContext.WriteString("\n")
+	}
+
 	prompt := fmt.Sprintf(`分析以下代码变更，推断开发者学习或实践了什么。
 
 文件: %s
 语言: %s
-
+%s
 Diff:
 %s
-
-现有技能分类:
-- language: 编程语言 (Go, Python, JavaScript, TypeScript, Rust 等)
-- framework: 框架 (React, Vue, Gin, Django, Spring 等)
-- database: 数据库 (MySQL, PostgreSQL, Redis, MongoDB 等)
-- devops: 运维工具 (Docker, Kubernetes, Linux, CI/CD 等)
-- tool: 开发工具 (Git, Webpack, Vite 等)
-- concept: 编程概念 (并发, 设计模式, 算法, API 等)
-- other: 其他
 
 请用 JSON 格式返回（不要 markdown 代码块）:
 {
   "insight": "一句话描述这次修改学到了什么或做了什么（中文）",
   "skills": [
-    {"name": "技能名", "category": "分类名（从上面选择或新建）"}
+    {"name": "技能名", "category": "分类", "parent": "父技能名（可选）"}
   ],
   "difficulty": 0.3,
   "category": "learning"
 }
 
-注意：
-- 技能分类尽量使用现有分类，实在不合适才新建
-- 技能名使用标准名称（如 Go 而非 golang，React 而非 reactjs）
-- category 可选值: learning/refactoring/bugfix/feature`, filePath, language, diffContent)
+技能层级规则：
+1. 如果技能已存在于技能树中，使用**完全相同的名称**
+2. 编程语言是顶级技能（parent 留空）
+3. 框架/库归属到对应语言（如 Gin → Go, React → JavaScript）
+4. category 可选值: language/framework/database/devops/tool/concept/other
+5. 变更分类: learning/refactoring/bugfix/feature`, filePath, language, skillTreeContext.String(), diffContent)
 
 	messages := []Message{
-		{Role: "system", Content: "你是一个代码分析助手，擅长从代码变更中推断开发者的学习和成长。回复必须是纯 JSON，不要 markdown。"},
+		{Role: "system", Content: "你是一个代码分析助手，擅长从代码变更中推断开发者的学习和成长。你能看到用户当前的技能树，请合理判断技能归属。回复必须是纯 JSON，不要 markdown。"},
 		{Role: "user", Content: prompt},
 	}
 

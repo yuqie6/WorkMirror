@@ -56,6 +56,9 @@ func (s *AIService) AnalyzePendingDiffs(ctx context.Context, limit int) (int, er
 		return 0, nil
 	}
 
+	// 获取当前技能树（传给 AI 作为上下文）
+	existingSkills := s.getSkillInfoList(ctx)
+
 	// Worker Pool 配置
 	const workerCount = 3         // 并发 worker 数
 	const rateLimit = time.Second // 每个请求间隔（令牌桶）
@@ -88,7 +91,7 @@ func (s *AIService) AnalyzePendingDiffs(ctx context.Context, limit int) (int, er
 					// 令牌桶限流
 				}
 
-				insight, err := s.analyzer.AnalyzeDiff(ctx, diff.FilePath, diff.Language, diff.DiffContent)
+				insight, err := s.analyzer.AnalyzeDiff(ctx, diff.FilePath, diff.Language, diff.DiffContent, existingSkills)
 				if err != nil {
 					slog.Warn("分析 Diff 失败", "worker", workerID, "file", diff.FileName, "error", err)
 					continue
@@ -124,6 +127,25 @@ func (s *AIService) AnalyzePendingDiffs(ctx context.Context, limit int) (int, er
 
 	wg.Wait()
 	return int(analyzed), nil
+}
+
+// getSkillInfoList 获取简化的技能列表（传给 AI）
+func (s *AIService) getSkillInfoList(ctx context.Context) []ai.SkillInfo {
+	skills, err := s.skillService.skillRepo.GetAll(ctx)
+	if err != nil {
+		slog.Warn("获取技能列表失败", "error", err)
+		return nil
+	}
+
+	result := make([]ai.SkillInfo, 0, len(skills))
+	for _, skill := range skills {
+		result = append(result, ai.SkillInfo{
+			Name:     skill.Name,
+			Category: skill.Category,
+			Parent:   skill.ParentKey,
+		})
+	}
+	return result
 }
 
 // GenerateDailySummary 生成每日总结

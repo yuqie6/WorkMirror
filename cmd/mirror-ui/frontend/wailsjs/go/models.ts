@@ -60,10 +60,12 @@ export namespace main {
 	    key: string;
 	    name: string;
 	    category: string;
+	    parent_key: string;
 	    level: number;
 	    experience: number;
 	    progress: number;
 	    status: string;
+	    last_active: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new SkillNodeDTO(source);
@@ -74,10 +76,12 @@ export namespace main {
 	        this.key = source["key"];
 	        this.name = source["name"];
 	        this.category = source["category"];
+	        this.parent_key = source["parent_key"];
 	        this.level = source["level"];
 	        this.experience = source["experience"];
 	        this.progress = source["progress"];
 	        this.status = source["status"];
+	        this.last_active = source["last_active"];
 	    }
 	}
 	export class SkillTrendDTO {
