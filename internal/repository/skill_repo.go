@@ -147,3 +147,17 @@ func (r *SkillRepository) GetTopLevel(ctx context.Context) ([]model.SkillNode, e
 	}
 	return skills, nil
 }
+
+// GetActiveSkillsInPeriod 获取指定时间窗内活跃的技能（按最近活跃时间过滤）
+func (r *SkillRepository) GetActiveSkillsInPeriod(ctx context.Context, startTime, endTime int64, limit int) ([]model.SkillNode, error) {
+	var skills []model.SkillNode
+	err := r.db.WithContext(ctx).
+		Where("last_active >= ? AND last_active <= ?", startTime, endTime).
+		Order("level DESC, exp DESC").
+		Limit(limit).
+		Find(&skills).Error
+	if err != nil {
+		return nil, fmt.Errorf("查询活跃技能失败: %w", err)
+	}
+	return skills, nil
+}

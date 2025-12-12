@@ -107,8 +107,8 @@ func (s *TrendService) GetTrendReport(ctx context.Context, period TrendPeriod) (
 		})
 	}
 
-	// 获取技能列表
-	skills, err := s.skillRepo.GetTopSkills(ctx, 10)
+	// 获取指定时间窗内活跃的技能（真正的趋势TopSkills）
+	skills, err := s.skillRepo.GetActiveSkillsInPeriod(ctx, startTime, endTime, 10)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +141,7 @@ func (s *TrendService) GetTrendReport(ctx context.Context, period TrendPeriod) (
 
 	var totalCodingMins int64
 	for _, stat := range appStats {
-		if isCodeEditorApp(stat.AppName) {
+		if IsCodeEditor(stat.AppName) {
 			totalCodingMins += int64(stat.TotalDuration / 60)
 		}
 	}
@@ -177,27 +177,4 @@ func (s *TrendService) detectBottlenecks(skills []SkillTrend) []string {
 	}
 
 	return bottlenecks
-}
-
-// isCodeEditorApp 判断是否是代码编辑器
-func isCodeEditorApp(appName string) bool {
-	editors := []string{
-		"Code.exe", "code.exe",
-		"Antigravity.exe",
-		"devenv.exe",
-		"idea64.exe", "idea.exe",
-		"goland64.exe", "goland.exe",
-		"pycharm64.exe", "pycharm.exe",
-		"webstorm64.exe", "webstorm.exe",
-		"vim.exe", "nvim.exe",
-		"sublime_text.exe",
-		"notepad++.exe",
-	}
-
-	for _, editor := range editors {
-		if appName == editor {
-			return true
-		}
-	}
-	return false
 }

@@ -6,6 +6,7 @@ import (
 	"context"
 	"log/slog"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/yuqie6/mirror/internal/handler"
@@ -23,7 +24,12 @@ type TrackerService struct {
 	flushInterval  time.Duration
 	stopChan       chan struct{}
 	wg             sync.WaitGroup
-	running        bool
+	running        atomic.Bool // 并发安全的状态标识
+
+	// 有界写入队列
+	writeChan     chan []model.Event
+	writerDone    chan struct{}
+	writeQueueCap int
 }
 
 // TrackerConfig 追踪服务配置
@@ -50,6 +56,9 @@ func NewTrackerService(
 		cfg = DefaultTrackerConfig()
 	}
 
+	// 写入队列容量：允许积压 10 个批次
+	writeQueueCap := 10
+
 	return &TrackerService{
 		collector:      collector,
 		eventRepo:      eventRepo,
@@ -57,25 +66,33 @@ func NewTrackerService(
 		flushBatchSize: cfg.FlushBatchSize,
 		flushInterval:  time.Duration(cfg.FlushIntervalSec) * time.Second,
 		stopChan:       make(chan struct{}),
+		writeChan:      make(chan []model.Event, writeQueueCap),
+		writerDone:     make(chan struct{}),
+		writeQueueCap:  writeQueueCap,
 	}
 }
 
 // Start 启动追踪服务
 func (t *TrackerService) Start(ctx context.Context) error {
-	if t.running {
+	if t.running.Load() {
 		return nil
 	}
 
-	t.running = true
+	t.running.Store(true)
 	slog.Info("追踪服务启动",
 		"flush_batch_size", t.flushBatchSize,
 		"flush_interval", t.flushInterval,
+		"write_queue_cap", t.writeQueueCap,
 	)
 
 	// 启动采集器
 	if err := t.collector.Start(ctx); err != nil {
+		t.running.Store(false)
 		return err
 	}
+
+	// 启动写入协程（单一 writer，避免并发写库冲突）
+	go t.writerLoop(ctx)
 
 	// 启动事件处理循环
 	t.wg.Add(1)
@@ -84,9 +101,9 @@ func (t *TrackerService) Start(ctx context.Context) error {
 	return nil
 }
 
-// Stop 停止追踪服务
+// Stop 停止追踪服务（等待所有事件落库）
 func (t *TrackerService) Stop() error {
-	if !t.running {
+	if !t.running.Load() {
 		return nil
 	}
 
@@ -95,19 +112,41 @@ func (t *TrackerService) Stop() error {
 	// 停止采集器
 	t.collector.Stop()
 
-	// 发送停止信号
+	// 发送停止信号，等待处理循环结束
 	close(t.stopChan)
-
-	// 等待处理循环结束
 	t.wg.Wait()
 
-	// 最终刷新
-	t.flush(context.Background())
+	// 最终刷新：将缓冲区剩余事件发送到写入队列
+	t.flushToWriter()
 
-	t.running = false
+	// 关闭写入队列，等待 writer 完成所有写入
+	close(t.writeChan)
+	<-t.writerDone
+
+	t.running.Store(false)
 	slog.Info("追踪服务已停止")
 
 	return nil
+}
+
+// writerLoop 单一写入协程，消费 writeChan 同步写库
+func (t *TrackerService) writerLoop(ctx context.Context) {
+	defer close(t.writerDone)
+
+	// 写库使用独立的 background ctx，避免外部 cancel 影响 Stop 时的数据落库
+	writeCtx := context.Background()
+	for events := range t.writeChan {
+		if len(events) == 0 {
+			continue
+		}
+
+		// 同步写入数据库
+		if err := t.eventRepo.BatchInsert(writeCtx, events); err != nil {
+			slog.Error("批量写入事件失败", "count", len(events), "error", err)
+			continue
+		}
+		slog.Debug("批量写入事件成功", "count", len(events))
+	}
 }
 
 // processLoop 事件处理循环
@@ -135,7 +174,7 @@ func (t *TrackerService) processLoop(ctx context.Context) {
 
 		case <-ticker.C:
 			// 定时刷新
-			t.flush(ctx)
+			t.flushToWriter()
 		}
 	}
 }
@@ -149,19 +188,19 @@ func (t *TrackerService) handleEvent(event *model.Event) {
 
 	// 检查是否达到批量写入阈值
 	if len(t.buffer) >= t.flushBatchSize {
-		t.flushLocked(context.Background())
+		t.flushLockedToWriter()
 	}
 }
 
-// flush 刷新缓冲区（带锁）
-func (t *TrackerService) flush(ctx context.Context) {
+// flushToWriter 刷新缓冲区到写入队列（带锁）
+func (t *TrackerService) flushToWriter() {
 	t.bufferMu.Lock()
 	defer t.bufferMu.Unlock()
-	t.flushLocked(ctx)
+	t.flushLockedToWriter()
 }
 
-// flushLocked 刷新缓冲区（无锁版本，调用者必须持有锁）
-func (t *TrackerService) flushLocked(ctx context.Context) {
+// flushLockedToWriter 刷新缓冲区到写入队列（无锁版本，调用者必须持有锁）
+func (t *TrackerService) flushLockedToWriter() {
 	if len(t.buffer) == 0 {
 		return
 	}
@@ -173,14 +212,8 @@ func (t *TrackerService) flushLocked(ctx context.Context) {
 	// 清空缓冲区
 	t.buffer = t.buffer[:0]
 
-	// 异步写入数据库
-	go func() {
-		if err := t.eventRepo.BatchInsert(ctx, events); err != nil {
-			slog.Error("批量写入事件失败", "count", len(events), "error", err)
-			return
-		}
-		slog.Debug("批量写入事件成功", "count", len(events))
-	}()
+	// 发送到写入队列（有界，满时会阻塞）
+	t.writeChan <- events
 }
 
 // Stats 返回服务统计信息
@@ -189,13 +222,17 @@ func (t *TrackerService) Stats() TrackerStats {
 	defer t.bufferMu.Unlock()
 
 	return TrackerStats{
-		BufferSize: len(t.buffer),
-		Running:    t.running,
+		BufferSize:    len(t.buffer),
+		WriteQueueLen: len(t.writeChan),
+		WriteQueueCap: t.writeQueueCap,
+		Running:       t.running.Load(),
 	}
 }
 
 // TrackerStats 追踪服务统计
 type TrackerStats struct {
-	BufferSize int  `json:"buffer_size"`
-	Running    bool `json:"running"`
+	BufferSize    int  `json:"buffer_size"`
+	WriteQueueLen int  `json:"write_queue_len"`
+	WriteQueueCap int  `json:"write_queue_cap"`
+	Running       bool `json:"running"`
 }

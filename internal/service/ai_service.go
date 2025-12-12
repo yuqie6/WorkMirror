@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"sync"
 	"sync/atomic"
@@ -66,7 +67,6 @@ func (s *AIService) AnalyzePendingDiffs(ctx context.Context, limit int) (int, er
 	var (
 		wg       sync.WaitGroup
 		analyzed int32
-		mu       sync.Mutex
 		limiter  = time.NewTicker(rateLimit / time.Duration(workerCount))
 	)
 	defer limiter.Stop()
@@ -103,10 +103,8 @@ func (s *AIService) AnalyzePendingDiffs(ctx context.Context, limit int) (int, er
 					skillNames = append(skillNames, skill.Name)
 				}
 
-				// 更新数据库（需要锁保护）
-				mu.Lock()
+				// 更新数据库（repository 层已有事务保证一致性，无需外层锁）
 				if err := s.diffRepo.UpdateAIInsight(ctx, diff.ID, insight.Insight, skillNames); err != nil {
-					mu.Unlock()
 					slog.Warn("更新 Diff 解读失败", "id", diff.ID, "error", err)
 					continue
 				}
@@ -117,7 +115,13 @@ func (s *AIService) AnalyzePendingDiffs(ctx context.Context, limit int) (int, er
 				if err := s.skillService.UpdateSkillsFromDiffsWithCategory(ctx, []model.Diff{diff}, insight.Skills); err != nil {
 					slog.Warn("更新技能失败", "file", diff.FileName, "error", err)
 				}
-				mu.Unlock()
+
+				// 索引到 RAG（如果已配置）
+				if s.ragService != nil {
+					if err := s.ragService.IndexDiff(ctx, &diff); err != nil {
+						slog.Warn("索引 Diff 失败", "file", diff.FileName, "error", err)
+					}
+				}
 
 				atomic.AddInt32(&analyzed, 1)
 				slog.Info("Diff 分析完成", "worker", workerID, "file", diff.FileName)
@@ -178,7 +182,10 @@ func (s *AIService) GenerateDailySummary(ctx context.Context, date string) (*mod
 
 	// 获取当日事件统计
 	loc := time.Local
-	t, _ := time.ParseInLocation("2006-01-02", date, loc)
+	t, err := time.ParseInLocation("2006-01-02", date, loc)
+	if err != nil {
+		return nil, fmt.Errorf("无效日期格式: %w", err)
+	}
 	startTime := t.UnixMilli()
 	endTime := t.Add(24*time.Hour).UnixMilli() - 1
 
@@ -258,7 +265,7 @@ func (s *AIService) GenerateDailySummary(ctx context.Context, date string) (*mod
 
 	// 计算编码时长
 	for _, stat := range appStats {
-		if isCodeEditorInList(stat.AppName, DefaultCodeEditors) {
+		if IsCodeEditor(stat.AppName) {
 			summary.TotalCoding += int(stat.TotalDuration / 60)
 		}
 	}
@@ -267,26 +274,14 @@ func (s *AIService) GenerateDailySummary(ctx context.Context, date string) (*mod
 		return nil, err
 	}
 
-	return summary, nil
-}
-
-// isCodeEditorInList 判断是否是代码编辑器（使用提供的列表）
-func isCodeEditorInList(appName string, editors []string) bool {
-	for _, editor := range editors {
-		if appName == editor {
-			return true
+	// 索引到 RAG（如果已配置）
+	if s.ragService != nil {
+		if err := s.ragService.IndexDailySummary(ctx, summary); err != nil {
+			slog.Warn("索引每日总结失败", "date", date, "error", err)
 		}
 	}
-	return false
-}
 
-// DefaultCodeEditors 默认代码编辑器列表（配置未提供时使用）
-var DefaultCodeEditors = []string{
-	"Code.exe", "code.exe", "Cursor.exe", "cursor.exe",
-	"Antigravity.exe", "antigravity.exe",
-	"idea64.exe", "idea.exe", "goland64.exe", "pycharm64.exe", "webstorm64.exe",
-	"devenv.exe", "Zed.exe", "Fleet.exe", "sublime_text.exe", "notepad++.exe",
-	"vim.exe", "nvim.exe", "emacs.exe",
+	return summary, nil
 }
 
 // GenerateWeeklySummary 生成周报（代理到 analyzer）
