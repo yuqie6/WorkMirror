@@ -52,3 +52,37 @@ func (r *SummaryRepository) GetRecent(ctx context.Context, days int) ([]model.Da
 	}
 	return summaries, nil
 }
+
+// GetByDateRange 获取日期范围内的总结
+func (r *SummaryRepository) GetByDateRange(ctx context.Context, startDate, endDate string) ([]model.DailySummary, error) {
+	var summaries []model.DailySummary
+	err := r.db.WithContext(ctx).
+		Where("date >= ? AND date <= ?", startDate, endDate).
+		Order("date DESC").
+		Find(&summaries).Error
+	if err != nil {
+		return nil, fmt.Errorf("查询日期范围总结失败: %w", err)
+	}
+	return summaries, nil
+}
+
+// SummaryPreview 日报预览（用于历史列表）
+type SummaryPreview struct {
+	Date    string
+	Preview string // 摘要前40字
+}
+
+// ListSummaryPreviews 获取已生成日报的预览列表
+func (r *SummaryRepository) ListSummaryPreviews(ctx context.Context, limit int) ([]SummaryPreview, error) {
+	var results []SummaryPreview
+	err := r.db.WithContext(ctx).
+		Model(&model.DailySummary{}).
+		Select("date, SUBSTR(summary, 1, 40) as preview").
+		Order("date DESC").
+		Limit(limit).
+		Find(&results).Error
+	if err != nil {
+		return nil, fmt.Errorf("查询日报预览失败: %w", err)
+	}
+	return results, nil
+}

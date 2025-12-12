@@ -6,6 +6,10 @@ export function GetAppStats() {
   return window['go']['main']['App']['GetAppStats']();
 }
 
+export function GetDailySummary(arg1) {
+  return window['go']['main']['App']['GetDailySummary'](arg1);
+}
+
 export function GetDiffDetail(arg1) {
   return window['go']['main']['App']['GetDiffDetail'](arg1);
 }
@@ -24,4 +28,8 @@ export function GetTodaySummary() {
 
 export function GetTrends(arg1) {
   return window['go']['main']['App']['GetTrends'](arg1);
+}
+
+export function ListSummaryIndex(arg1) {
+  return window['go']['main']['App']['ListSummaryIndex'](arg1);
 }

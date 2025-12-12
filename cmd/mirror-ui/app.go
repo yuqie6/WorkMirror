@@ -75,6 +75,71 @@ func (a *App) GetTodaySummary() (*DailySummaryDTO, error) {
 	}, nil
 }
 
+// SummaryIndexDTO 日报索引（用于历史侧边栏）
+type SummaryIndexDTO struct {
+	Date       string `json:"date"`
+	HasSummary bool   `json:"has_summary"`
+	Preview    string `json:"preview"` // 摘要前40字
+}
+
+// ListSummaryIndex 获取所有已生成的日报索引（只返回有数据的日期）
+func (a *App) ListSummaryIndex(limit int) ([]SummaryIndexDTO, error) {
+	if a.core == nil || a.core.Repos.Summary == nil {
+		return nil, errors.New("总结仓储未初始化")
+	}
+	if limit <= 0 {
+		limit = 365 // 最多一年
+	}
+
+	ctx, cancel := context.WithTimeout(a.ctx, 5*time.Second)
+	defer cancel()
+
+	// 只获取已生成日报的预览（按日期倒序）
+	previews, err := a.core.Repos.Summary.ListSummaryPreviews(ctx, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	// 只返回有数据的日期
+	result := make([]SummaryIndexDTO, 0, len(previews))
+	for _, p := range previews {
+		result = append(result, SummaryIndexDTO{
+			Date:       p.Date,
+			HasSummary: true,
+			Preview:    p.Preview,
+		})
+	}
+	return result, nil
+}
+
+// GetDailySummary 获取指定日期总结（优先读取缓存，必要时生成）
+func (a *App) GetDailySummary(date string) (*DailySummaryDTO, error) {
+	ctx, cancel := context.WithTimeout(a.ctx, 30*time.Second)
+	defer cancel()
+
+	if a.core == nil || a.core.Services.AI == nil {
+		return nil, errors.New("AI 服务未初始化，请检查配置与数据库")
+	}
+	if date == "" {
+		return nil, errors.New("date 不能为空")
+	}
+
+	summary, err := a.core.Services.AI.GenerateDailySummary(ctx, date)
+	if err != nil {
+		return nil, err
+	}
+
+	return &DailySummaryDTO{
+		Date:         summary.Date,
+		Summary:      summary.Summary,
+		Highlights:   summary.Highlights,
+		Struggles:    summary.Struggles,
+		SkillsGained: summary.SkillsGained,
+		TotalCoding:  summary.TotalCoding,
+		TotalDiffs:   summary.TotalDiffs,
+	}, nil
+}
+
 // SkillNodeDTO 技能节点 DTO
 type SkillNodeDTO struct {
 	Key        string `json:"key"`

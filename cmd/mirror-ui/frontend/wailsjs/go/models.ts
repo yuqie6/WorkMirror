@@ -148,6 +148,22 @@ export namespace main {
 	        this.days_active = source["days_active"];
 	    }
 	}
+	export class SummaryIndexDTO {
+	    date: string;
+	    has_summary: boolean;
+	    preview: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SummaryIndexDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.date = source["date"];
+	        this.has_summary = source["has_summary"];
+	        this.preview = source["preview"];
+	    }
+	}
 	export class TrendReportDTO {
 	    period: string;
 	    start_date: string;

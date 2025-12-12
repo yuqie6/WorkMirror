@@ -4,6 +4,8 @@ import {main} from '../models';
 
 export function GetAppStats():Promise<Array<main.AppStatsDTO>>;
 
+export function GetDailySummary(arg1:string):Promise<main.DailySummaryDTO>;
+
 export function GetDiffDetail(arg1:number):Promise<main.DiffDetailDTO>;
 
 export function GetSkillEvidence(arg1:string):Promise<Array<main.SkillEvidenceDTO>>;
@@ -13,3 +15,5 @@ export function GetSkillTree():Promise<Array<main.SkillNodeDTO>>;
 export function GetTodaySummary():Promise<main.DailySummaryDTO>;
 
 export function GetTrends(arg1:number):Promise<main.TrendReportDTO>;
+
+export function ListSummaryIndex(arg1:number):Promise<Array<main.SummaryIndexDTO>>;
