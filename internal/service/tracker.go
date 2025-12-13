@@ -24,6 +24,7 @@ type TrackerService struct {
 	stopChan       chan struct{}
 	wg             sync.WaitGroup
 	running        atomic.Bool // 并发安全的状态标识
+	onWriteSuccess func(count int)
 
 	// 有界写入队列
 	writeChan     chan []model.Event
@@ -35,6 +36,7 @@ type TrackerService struct {
 type TrackerConfig struct {
 	FlushBatchSize   int // 批量写入阈值
 	FlushIntervalSec int // 强制刷新间隔（秒）
+	OnWriteSuccess   func(count int)
 }
 
 // DefaultTrackerConfig 默认配置
@@ -68,6 +70,7 @@ func NewTrackerService(
 		writeChan:      make(chan []model.Event, writeQueueCap),
 		writerDone:     make(chan struct{}),
 		writeQueueCap:  writeQueueCap,
+		onWriteSuccess: cfg.OnWriteSuccess,
 	}
 }
 
@@ -145,6 +148,9 @@ func (t *TrackerService) writerLoop(ctx context.Context) {
 			continue
 		}
 		slog.Debug("批量写入事件成功", "count", len(events))
+		if t.onWriteSuccess != nil {
+			t.onWriteSuccess(len(events))
+		}
 	}
 }
 

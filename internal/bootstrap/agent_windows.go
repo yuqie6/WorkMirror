@@ -6,6 +6,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/yuqie6/mirror/internal/eventbus"
 	"github.com/yuqie6/mirror/internal/handler"
 	"github.com/yuqie6/mirror/internal/service"
 )
@@ -13,6 +14,7 @@ import (
 // AgentRuntime 包含 Agent 二进制需要启动的采集与后台任务
 type AgentRuntime struct {
 	*Core
+	Hub *eventbus.Hub
 
 	Collectors struct {
 		Window  handler.Collector
@@ -35,7 +37,7 @@ func NewAgentRuntime(ctx context.Context, cfgPath string) (*AgentRuntime, error)
 		return nil, err
 	}
 
-	rt := &AgentRuntime{Core: core}
+	rt := &AgentRuntime{Core: core, Hub: eventbus.NewHub()}
 
 	// Window collector + tracker
 	rt.Collectors.Window = handler.NewWindowCollector(&handler.CollectorConfig{
@@ -47,6 +49,12 @@ func NewAgentRuntime(ctx context.Context, cfgPath string) (*AgentRuntime, error)
 	rt.Services.Tracker = service.NewTrackerService(rt.Collectors.Window, core.Repos.Event, &service.TrackerConfig{
 		FlushBatchSize:   core.Cfg.Collector.FlushBatchSize,
 		FlushIntervalSec: core.Cfg.Collector.FlushIntervalSec,
+		OnWriteSuccess: func(count int) {
+			rt.Hub.Publish(eventbus.Event{
+				Type: "events_persisted",
+				Data: map[string]any{"count": count},
+			})
+		},
 	})
 	if err := rt.Services.Tracker.Start(ctx); err != nil {
 		core.Close()
@@ -70,6 +78,12 @@ func NewAgentRuntime(ctx context.Context, cfgPath string) (*AgentRuntime, error)
 		}
 		rt.Collectors.Diff = diffCollector
 		rt.Services.Diff = service.NewDiffService(diffCollector, core.Repos.Diff)
+		rt.Services.Diff.SetOnPersisted(func(count int) {
+			rt.Hub.Publish(eventbus.Event{
+				Type: "diffs_persisted",
+				Data: map[string]any{"count": count},
+			})
+		})
 		if err := rt.Services.Diff.Start(ctx); err != nil {
 			rt.Close()
 			return nil, err
@@ -97,6 +111,12 @@ func NewAgentRuntime(ctx context.Context, cfgPath string) (*AgentRuntime, error)
 		if err == nil {
 			rt.Collectors.Browser = bc
 			rt.Services.Browser = service.NewBrowserService(bc, core.Repos.Browser)
+			rt.Services.Browser.SetOnPersisted(func(count int) {
+				rt.Hub.Publish(eventbus.Event{
+					Type: "browser_events_persisted",
+					Data: map[string]any{"count": count},
+				})
+			})
 			_ = rt.Services.Browser.Start(ctx)
 		}
 	}

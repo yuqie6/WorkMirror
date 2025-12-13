@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 
 	"github.com/spf13/viper"
@@ -141,17 +140,22 @@ func Load(configPath string) (*Config, error) {
 	return &cfg, nil
 }
 
+// Default 返回“未解析路径”的默认配置（用于首次落盘，保持相对路径可便携）。
+func Default() *Config {
+	v := viper.New()
+	setDefaults(v)
+	var cfg Config
+	_ = v.Unmarshal(&cfg)
+	return &cfg
+}
+
 // setDefaults 设置默认值
 func setDefaults(v *viper.Viper) {
 	// App
 	v.SetDefault("app.name", "mirror-agent")
 	v.SetDefault("app.version", "0.1.0")
 	v.SetDefault("app.log_level", "info")
-	defaultLogPath := "./logs/mirror.log"
-	if userConfigDir, err := os.UserConfigDir(); err == nil && userConfigDir != "" {
-		defaultLogPath = filepath.Join(userConfigDir, "Mirror", "logs", "mirror.log")
-	}
-	v.SetDefault("app.log_path", defaultLogPath)
+	v.SetDefault("app.log_path", "./logs/mirror.log")
 
 	// Collector
 	v.SetDefault("collector.poll_interval_ms", 500)
@@ -169,13 +173,7 @@ func setDefaults(v *viper.Viper) {
 	})
 
 	// Storage
-	defaultDBPath := "./data/mirror.db"
-	if runtime.GOOS == "windows" {
-		if userConfigDir, err := os.UserConfigDir(); err == nil && userConfigDir != "" {
-			defaultDBPath = filepath.Join(userConfigDir, "Mirror", "data", "mirror.db")
-		}
-	}
-	v.SetDefault("storage.db_path", defaultDBPath)
+	v.SetDefault("storage.db_path", "./data/mirror.db")
 
 	// Diff
 	v.SetDefault("diff.enabled", true)

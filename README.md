@@ -25,19 +25,29 @@ go build -o mirror.exe ./cmd/mirror-agent/
 ./mirror.exe
 ```
 
-## 打包安装包（Windows）
+## 构建与分发（Windows）
 
-前置：Go 1.25.x、Node 16+、Wails v2、Inno Setup 6（提供 `ISCC.exe`）。
+推荐“便携分发”（一个 `mirror.exe` + 同目录 `config/` 与 `data/`）。Agent 首次启动会自动生成 `config/config.yaml` 与 `data/` 目录。
 
 在 PowerShell 执行：
 
 ```powershell
-.\scripts\package-windows.ps1
+go build -trimpath -ldflags "-H=windowsgui -s -w" -o .\mirror.exe .\cmd\mirror-agent\
 ```
 
-产物输出到 `build/installer/windows/out/`（可用 `-Version` / `-OutDir` 覆盖）。
+说明：Agent 启动后托盘菜单“打开面板”会以 app-mode 窗口打开本地 UI（由 Agent 内置并服务）。
 
-说明：安装后以 UI 为主入口，UI 启动时会自动拉起后台 Agent（托盘常驻，避免重复启动已做单实例保护）。
+## 前端开发（UI）
+
+前端源码位于 `frontend/`，开发调试建议：
+
+```powershell
+# 启动 agent 后，设置 VITE_API_TARGET 指向 agent 的本地地址（端口为自动分配）
+$env:VITE_API_TARGET="http://127.0.0.1:<port>"
+pnpm dev
+```
+
+发布时将前端构建产物（`dist/`）写入 `internal/uiassets/dist/` 后重新编译 agent，即可将 UI 静态资源内置到单个二进制中。
 
 ## 项目结构
 

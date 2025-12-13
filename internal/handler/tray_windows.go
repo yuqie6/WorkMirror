@@ -5,8 +5,6 @@ package handler
 import (
 	"log/slog"
 	"os"
-	"os/exec"
-	"path/filepath"
 
 	"github.com/getlantern/systray"
 	"golang.org/x/sys/windows/registry"
@@ -135,48 +133,4 @@ func disableAutoStart() error {
 	defer key.Close()
 
 	return key.DeleteValue(appRegistryName)
-}
-
-// ========== 打开 UI ==========
-
-// OpenUI 打开 UI 程序
-func OpenUI() {
-	exePath, _ := os.Executable()
-	dir := filepath.Dir(exePath)
-
-	// 可能的 UI 路径列表
-	possiblePaths := []string{
-		filepath.Join(dir, "mirror-ui.exe"),                                     // 同目录
-		filepath.Join(dir, "mirror-ui", "mirror-ui.exe"),                        // 子目录
-		filepath.Join(dir, "..", "mirror-ui", "build", "bin", "mirror-ui.exe"),  // 开发时相对路径
-		filepath.Join(dir, "cmd", "mirror-ui", "build", "bin", "mirror-ui.exe"), // 从项目根目录运行
-	}
-
-	for _, uiPath := range possiblePaths {
-		if _, err := os.Stat(uiPath); err == nil {
-			if err := exec.Command(uiPath).Start(); err != nil {
-				slog.Error("启动 UI 失败", "path", uiPath, "error", err)
-			}
-			return
-		}
-	}
-
-	// 没找到 UI 程序
-	slog.Warn("未找到 mirror-ui.exe", "searched_paths", possiblePaths)
-}
-
-// _getDefaultIcon 返回默认图标（保留以供将来使用）
-func _getDefaultIcon() []byte {
-	// 简单的 16x16 ICO 图标（蓝色方块）
-	// 实际项目应该嵌入真正的图标文件
-	return []byte{
-		0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x10, 0x10,
-		0x00, 0x00, 0x01, 0x00, 0x20, 0x00, 0x68, 0x04,
-		0x00, 0x00, 0x16, 0x00, 0x00, 0x00, 0x28, 0x00,
-		0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x20, 0x00,
-		0x00, 0x00, 0x01, 0x00, 0x20, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	}
 }

@@ -21,6 +21,7 @@ type BrowserService struct {
 	stopChan    chan struct{}
 	wg          sync.WaitGroup
 	running     bool
+	onPersisted func(count int)
 }
 
 // NewBrowserService 创建浏览器服务
@@ -35,6 +36,10 @@ func NewBrowserService(
 		bufferSize:  50,
 		stopChan:    make(chan struct{}),
 	}
+}
+
+func (s *BrowserService) SetOnPersisted(fn func(count int)) {
+	s.onPersisted = fn
 }
 
 // Start 启动服务
@@ -125,5 +130,8 @@ func (s *BrowserService) flush(ctx context.Context) {
 		slog.Error("保存浏览器事件失败", "error", err)
 	} else {
 		slog.Info("浏览器事件已保存", "count", len(events))
+		if s.onPersisted != nil {
+			s.onPersisted(len(events))
+		}
 	}
 }

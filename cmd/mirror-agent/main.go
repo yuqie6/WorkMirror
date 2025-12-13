@@ -4,15 +4,19 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"golang.org/x/sys/windows"
 
 	"github.com/yuqie6/mirror/internal/bootstrap"
 	"github.com/yuqie6/mirror/internal/handler"
+	"github.com/yuqie6/mirror/internal/httpapi"
+	"github.com/yuqie6/mirror/internal/pkg/config"
 )
 
 func main() {
@@ -30,7 +34,14 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	rt, err := bootstrap.NewAgentRuntime(ctx, "")
+	cfgPath, cfgErr := config.DefaultConfigPath()
+	if cfgErr == nil {
+		if _, err := os.Stat(cfgPath); errors.Is(err, os.ErrNotExist) {
+			_ = config.WriteFile(cfgPath, config.Default())
+		}
+	}
+
+	rt, err := bootstrap.NewAgentRuntime(ctx, cfgPath)
 	if err != nil {
 		slog.Error("启动 Agent 失败", "error", err)
 		os.Exit(1)
@@ -40,6 +51,11 @@ func main() {
 	slog.Info("Mirror Agent 启动中...", "name", rt.Cfg.App.Name, "version", rt.Cfg.App.Version)
 	slog.Info("Mirror Agent 已启动")
 
+	uiServer, err := httpapi.Start(ctx, rt, httpapi.Options{ListenAddr: "127.0.0.1:0"})
+	if err != nil {
+		slog.Error("启动本地 UI/API 失败", "error", err)
+	}
+
 	// ========== 系统托盘 ==========
 	quitChan := make(chan struct{})
 
@@ -47,7 +63,9 @@ func main() {
 		AppName: rt.Cfg.App.Name,
 		OnOpen: func() {
 			slog.Info("打开 UI 面板")
-			handler.OpenUI()
+			if uiServer != nil {
+				handler.OpenUI(uiServer.BaseURL() + "/")
+			}
 		},
 		OnQuit: func() {
 			slog.Info("从托盘退出")
@@ -75,5 +93,10 @@ func main() {
 	slog.Info("正在关闭...")
 
 	cancel()
+	if uiServer != nil {
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		_ = uiServer.Shutdown(shutdownCtx)
+		shutdownCancel()
+	}
 	slog.Info("Mirror Agent 已退出")
 }

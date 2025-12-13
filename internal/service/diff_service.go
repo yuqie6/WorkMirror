@@ -13,11 +13,12 @@ import (
 
 // DiffService Diff 处理服务
 type DiffService struct {
-	collector *handler.DiffCollector
-	diffRepo  DiffRepository
-	stopChan  chan struct{}
-	wg        sync.WaitGroup
-	running   bool
+	collector   *handler.DiffCollector
+	diffRepo    DiffRepository
+	stopChan    chan struct{}
+	wg          sync.WaitGroup
+	running     bool
+	onPersisted func(count int)
 }
 
 // NewDiffService 创建 Diff 服务
@@ -30,6 +31,10 @@ func NewDiffService(
 		diffRepo:  diffRepo,
 		stopChan:  make(chan struct{}),
 	}
+}
+
+func (s *DiffService) SetOnPersisted(fn func(count int)) {
+	s.onPersisted = fn
 }
 
 // Start 启动服务
@@ -105,6 +110,9 @@ func (s *DiffService) handleDiff(ctx context.Context, diff *model.Diff) {
 		"lines_added", diff.LinesAdded,
 		"lines_deleted", diff.LinesDeleted,
 	)
+	if s.onPersisted != nil {
+		s.onPersisted(1)
+	}
 }
 
 // AddWatchPath 添加监控路径
