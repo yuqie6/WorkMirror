@@ -19,12 +19,32 @@ func NewSessionRepository(db *gorm.DB) *SessionRepository {
 	return &SessionRepository{db: db}
 }
 
-// Create 创建会话（会话结束后写入，不可变）
-func (r *SessionRepository) Create(ctx context.Context, session *model.Session) error {
-	if err := r.db.WithContext(ctx).Create(session).Error; err != nil {
-		return fmt.Errorf("创建会话失败: %w", err)
+// Create 创建会话（尽量保持幂等：已存在则复用 ID）
+func (r *SessionRepository) Create(ctx context.Context, session *model.Session) (bool, error) {
+	if session == nil {
+		return false, fmt.Errorf("session is nil")
 	}
-	return nil
+	if session.StartTime <= 0 || session.EndTime <= 0 || session.EndTime <= session.StartTime {
+		return false, fmt.Errorf("invalid session time range")
+	}
+
+	// 幂等保护：同一切分版本下，start/end 相同视为同一会话
+	var existing model.Session
+	err := r.db.WithContext(ctx).
+		Where("start_time = ? AND end_time = ? AND session_version = ?", session.StartTime, session.EndTime, session.SessionVersion).
+		First(&existing).Error
+	if err == nil {
+		session.ID = existing.ID
+		return false, nil
+	}
+	if err != nil && err != gorm.ErrRecordNotFound {
+		return false, fmt.Errorf("查询会话失败: %w", err)
+	}
+
+	if err := r.db.WithContext(ctx).Create(session).Error; err != nil {
+		return false, fmt.Errorf("创建会话失败: %w", err)
+	}
+	return true, nil
 }
 
 // UpdateSummaryOnly 仅更新 summary/metadata（不修改 start/end）
@@ -41,6 +61,33 @@ func (r *SessionRepository) UpdateSummaryOnly(ctx context.Context, id int64, sum
 	}
 	if err := r.db.WithContext(ctx).Model(&model.Session{}).Where("id = ?", id).Updates(updates).Error; err != nil {
 		return fmt.Errorf("更新会话摘要失败: %w", err)
+	}
+	return nil
+}
+
+// UpdateSemantic 更新会话语义字段（允许部分更新）
+func (r *SessionRepository) UpdateSemantic(ctx context.Context, id int64, update model.SessionSemanticUpdate) error {
+	updates := map[string]interface{}{}
+	if update.TimeRange != "" {
+		updates["time_range"] = update.TimeRange
+	}
+	if update.Category != "" {
+		updates["category"] = update.Category
+	}
+	if update.Summary != "" {
+		updates["summary"] = update.Summary
+	}
+	if len(update.SkillsInvolved) > 0 {
+		updates["skills_involved"] = model.JSONArray(update.SkillsInvolved)
+	}
+	if update.Metadata != nil {
+		updates["metadata"] = update.Metadata
+	}
+	if len(updates) == 0 {
+		return nil
+	}
+	if err := r.db.WithContext(ctx).Model(&model.Session{}).Where("id = ?", id).Updates(updates).Error; err != nil {
+		return fmt.Errorf("更新会话语义失败: %w", err)
 	}
 	return nil
 }
@@ -69,6 +116,18 @@ func (r *SessionRepository) GetByTimeRange(ctx context.Context, startTime, endTi
 	return sessions, nil
 }
 
+// GetByID 按 ID 查询会话
+func (r *SessionRepository) GetByID(ctx context.Context, id int64) (*model.Session, error) {
+	var session model.Session
+	if err := r.db.WithContext(ctx).First(&session, id).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("查询会话失败: %w", err)
+	}
+	return &session, nil
+}
+
 // GetLastSession 获取最近一次会话（按 end_time）
 func (r *SessionRepository) GetLastSession(ctx context.Context) (*model.Session, error) {
 	var session model.Session
@@ -81,4 +140,3 @@ func (r *SessionRepository) GetLastSession(ctx context.Context) (*model.Session,
 	}
 	return &session, nil
 }
-

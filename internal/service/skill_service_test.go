@@ -75,6 +75,9 @@ func (f fakeDiffRepo) GetByDate(ctx context.Context, date string) ([]model.Diff,
 func (f fakeDiffRepo) GetByTimeRange(ctx context.Context, startTime, endTime int64) ([]model.Diff, error) {
 	return nil, nil
 }
+func (f fakeDiffRepo) GetByIDs(ctx context.Context, ids []int64) ([]model.Diff, error) {
+	return nil, nil
+}
 func (f fakeDiffRepo) GetLanguageStats(ctx context.Context, startTime, endTime int64) ([]repository.LanguageStat, error) {
 	return nil, nil
 }

@@ -81,6 +81,9 @@ func NewAgentRuntime(ctx context.Context, cfgPath string) (*AgentRuntime, error)
 		if err == nil {
 			rt.Services.RAG = rag
 			core.Services.AI.SetRAGService(rag)
+			if core.Services.SessionSemantic != nil {
+				core.Services.SessionSemantic.SetRAG(rag)
+			}
 		}
 	}
 
@@ -105,6 +108,11 @@ func NewAgentRuntime(ctx context.Context, cfgPath string) (*AgentRuntime, error)
 	// Session 定时切分（可离线，无需 AI）
 	if core.Services.Sessions != nil {
 		go runSessionSplitLoop(ctx, core.Services.Sessions, 5*time.Minute)
+	}
+
+	// Session 语义补全（用于证据链，DeepSeek 未配置时自动降级为规则摘要）
+	if core.Services.SessionSemantic != nil {
+		go runSessionSemanticLoop(ctx, core.Services.SessionSemantic, 10*time.Minute)
 	}
 
 	return rt, nil
@@ -175,4 +183,30 @@ func splitWithRetry(ctx context.Context, sessionService *service.SessionService)
 		return
 	}
 	_, _ = sessionService.BuildSessionsIncremental(ctx)
+}
+
+func runSessionSemanticLoop(ctx context.Context, svc *service.SessionSemanticService, interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	enrichWithRetry(ctx, svc)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			enrichWithRetry(ctx, svc)
+		}
+	}
+}
+
+func enrichWithRetry(ctx context.Context, svc *service.SessionSemanticService) {
+	if svc == nil {
+		return
+	}
+	_, _ = svc.EnrichSessionsIncremental(ctx, &service.SessionSemanticServiceConfig{
+		Lookback: 48 * time.Hour,
+		Limit:    20,
+	})
 }

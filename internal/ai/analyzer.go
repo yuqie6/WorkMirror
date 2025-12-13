@@ -150,6 +150,33 @@ type DailySummaryResult struct {
 	Suggestions  string   `json:"suggestions"`   // 建议
 }
 
+// SessionSummaryRequest 会话摘要请求
+type SessionSummaryRequest struct {
+	SessionID  int64             `json:"session_id"`
+	Date       string            `json:"date"`
+	TimeRange  string            `json:"time_range"`
+	PrimaryApp string            `json:"primary_app"`
+	AppUsage   []WindowEventInfo `json:"app_usage"`
+	Diffs      []DiffInfo        `json:"diffs"`
+	Browser    []BrowserInfo     `json:"browser"`
+	SkillsHint []string          `json:"skills_hint"`
+	Memories   []string          `json:"memories"`
+}
+
+type BrowserInfo struct {
+	Domain string `json:"domain"`
+	Title  string `json:"title"`
+	URL    string `json:"url"`
+}
+
+// SessionSummaryResult 会话摘要结果
+type SessionSummaryResult struct {
+	Summary        string   `json:"summary"`
+	Category       string   `json:"category"` // technical/learning/exploration/other
+	SkillsInvolved []string `json:"skills_involved"`
+	Tags           []string `json:"tags"`
+}
+
 // GenerateDailySummary 生成每日总结
 func (a *DiffAnalyzer) GenerateDailySummary(ctx context.Context, req *DailySummaryRequest) (*DailySummaryResult, error) {
 	if !a.client.IsConfigured() {
@@ -226,6 +253,122 @@ func (a *DiffAnalyzer) GenerateDailySummary(ctx context.Context, req *DailySumma
 		return nil, fmt.Errorf("解析总结失败: %w", err)
 	}
 
+	return &result, nil
+}
+
+// GenerateSessionSummary 生成会话语义摘要（用于证据链的可解释描述）
+func (a *DiffAnalyzer) GenerateSessionSummary(ctx context.Context, req *SessionSummaryRequest) (*SessionSummaryResult, error) {
+	if !a.client.IsConfigured() {
+		return nil, fmt.Errorf("DeepSeek API 未配置")
+	}
+
+	// 控制输入规模
+	maxApps := 8
+	apps := req.AppUsage
+	if len(apps) > maxApps {
+		apps = apps[:maxApps]
+	}
+	maxDiffs := 12
+	diffs := req.Diffs
+	if len(diffs) > maxDiffs {
+		diffs = diffs[:maxDiffs]
+	}
+	maxBrowser := 12
+	browser := req.Browser
+	if len(browser) > maxBrowser {
+		browser = browser[:maxBrowser]
+	}
+	maxMem := 5
+	mem := req.Memories
+	if len(mem) > maxMem {
+		mem = mem[:maxMem]
+	}
+
+	var b strings.Builder
+	b.WriteString("请基于以下本地行为证据，生成一个可解释的会话摘要。\n")
+	b.WriteString("要求：\n")
+	b.WriteString("1) summary 用中文 1 句话（尽量具体，避免空泛）\n")
+	b.WriteString("2) category 只能是 technical/learning/exploration/other\n")
+	b.WriteString("3) skills_involved 最多 8 个，尽量使用用户已有技能树中的标准名称（如 Go、Redis、React）\n")
+	b.WriteString("4) tags 最多 6 个，用中文短标签（如 并发、性能、数据库、文档阅读）\n")
+	b.WriteString("5) 必须可追溯：summary 应对应下面的 diff/browser/app 证据，不要胡编\n\n")
+
+	b.WriteString(fmt.Sprintf("日期: %s\n时间: %s\n主应用: %s\n\n", req.Date, req.TimeRange, req.PrimaryApp))
+
+	if len(apps) > 0 {
+		b.WriteString("应用使用:\n")
+		for _, a := range apps {
+			b.WriteString(fmt.Sprintf("- %s: %d 分钟\n", a.AppName, a.Duration))
+		}
+		b.WriteString("\n")
+	}
+
+	if len(diffs) > 0 {
+		b.WriteString("代码变更:\n")
+		for _, d := range diffs {
+			desc := strings.TrimSpace(d.Insight)
+			if desc == "" {
+				desc = fmt.Sprintf("%d行变更", d.LinesChanged)
+			}
+			b.WriteString(fmt.Sprintf("- %s (%s): %s\n", d.FileName, d.Language, desc))
+		}
+		b.WriteString("\n")
+	}
+
+	if len(browser) > 0 {
+		b.WriteString("浏览记录:\n")
+		for _, it := range browser {
+			title := strings.TrimSpace(it.Title)
+			if title == "" {
+				title = it.Domain
+			}
+			b.WriteString(fmt.Sprintf("- %s: %s\n", it.Domain, title))
+		}
+		b.WriteString("\n")
+	}
+
+	if len(req.SkillsHint) > 0 {
+		b.WriteString("技能提示（可参考）:\n")
+		for _, s := range req.SkillsHint {
+			if strings.TrimSpace(s) == "" {
+				continue
+			}
+			b.WriteString("- " + strings.TrimSpace(s) + "\n")
+		}
+		b.WriteString("\n")
+	}
+
+	if len(mem) > 0 {
+		b.WriteString("相关历史记忆（可参考，不要编造不存在的内容）:\n")
+		for _, m := range mem {
+			b.WriteString("- " + strings.TrimSpace(m) + "\n")
+		}
+		b.WriteString("\n")
+	}
+
+	b.WriteString("请用 JSON 格式返回（不要 markdown 代码块）:\n")
+	b.WriteString("{\n")
+	b.WriteString("  \"summary\": \"...\",\n")
+	b.WriteString("  \"category\": \"technical\",\n")
+	b.WriteString("  \"skills_involved\": [\"...\"],\n")
+	b.WriteString("  \"tags\": [\"...\"]\n")
+	b.WriteString("}\n")
+
+	messages := []Message{
+		{Role: "system", Content: "你是一个本地优先的个人成长分析助手。你必须严格基于证据生成摘要，回复必须是纯 JSON。"},
+		{Role: "user", Content: b.String()},
+	}
+
+	response, err := a.client.ChatWithOptions(ctx, messages, 0.3, 600)
+	if err != nil {
+		return nil, fmt.Errorf("生成会话摘要失败: %w", err)
+	}
+	response = cleanJSONResponse(response)
+
+	var result SessionSummaryResult
+	if err := json.Unmarshal([]byte(response), &result); err != nil {
+		return nil, fmt.Errorf("解析会话摘要失败: %w", err)
+	}
 	return &result, nil
 }
 

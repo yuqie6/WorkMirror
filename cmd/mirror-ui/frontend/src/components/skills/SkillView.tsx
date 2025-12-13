@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 // @ts-ignore
-import { GetSkillEvidence, GetDiffDetail } from '../../../wailsjs/go/main/App';
+import { GetSkillEvidence, GetDiffDetail, GetSkillSessions } from '../../../wailsjs/go/main/App';
+import SessionDetailModal, { SessionDTO } from '../sessions/SessionDetailModal';
 
 export interface SkillNode {
     key: string;
@@ -280,6 +281,10 @@ const SkillView: React.FC<SkillViewProps> = ({ skills }) => {
     const [evidences, setEvidences] = useState<SkillEvidence[]>([]);
     const [evidenceLoading, setEvidenceLoading] = useState(false);
     const [evidenceError, setEvidenceError] = useState<string | null>(null);
+    const [skillSessions, setSkillSessions] = useState<SessionDTO[]>([]);
+    const [sessionsLoading, setSessionsLoading] = useState(false);
+    const [sessionsError, setSessionsError] = useState<string | null>(null);
+    const [activeSessionId, setActiveSessionId] = useState<number | null>(null);
     
     // New state for Diff Detail
     const [diffDetail, setDiffDetail] = useState<DiffDetail | null>(null);
@@ -292,14 +297,23 @@ const SkillView: React.FC<SkillViewProps> = ({ skills }) => {
         setSelectedSkill(skill);
         setEvidenceLoading(true);
         setEvidenceError(null);
+        setSessionsLoading(true);
+        setSessionsError(null);
         try {
-            const res = await GetSkillEvidence(skill.key);
-            setEvidences(res || []);
+            const [ev, sess] = await Promise.all([
+                GetSkillEvidence(skill.key),
+                GetSkillSessions(skill.key),
+            ]);
+            setEvidences(ev || []);
+            setSkillSessions(sess || []);
         } catch (err: any) {
             setEvidenceError(err?.message || '获取证据失败');
             setEvidences([]);
+            setSessionsError(err?.message || '获取相关会话失败');
+            setSkillSessions([]);
         } finally {
             setEvidenceLoading(false);
+            setSessionsLoading(false);
         }
     };
 
@@ -622,12 +636,50 @@ const SkillView: React.FC<SkillViewProps> = ({ skills }) => {
                                         </div>
                                     );
                                 })}
+
+                                <div className="pt-3 border-t border-gray-100">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <h4 className="text-sm font-semibold text-gray-900">相关会话</h4>
+                                        <span className="text-xs text-gray-400">{skillSessions.length}</span>
+                                    </div>
+
+                                    {sessionsLoading && <div className="text-sm text-gray-500">加载中...</div>}
+                                    {sessionsError && <div className="text-sm text-red-500">{sessionsError}</div>}
+
+                                    {!sessionsLoading && !sessionsError && skillSessions.length === 0 && (
+                                        <div className="text-sm text-gray-400">暂无会话关联（可在“日报”页生成会话摘要后再试）。</div>
+                                    )}
+
+                                    {!sessionsLoading && !sessionsError && skillSessions.length > 0 && (
+                                        <div className="space-y-2">
+                                            {skillSessions.map((s) => (
+                                                <button
+                                                    key={s.id}
+                                                    className="w-full text-left p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors border border-transparent hover:border-gray-200"
+                                                    onClick={() => setActiveSessionId(s.id)}
+                                                >
+                                                    <div className="flex items-center justify-between gap-3">
+                                                        <div className="min-w-0">
+                                                            <div className="text-sm font-medium text-gray-900 truncate">{s.time_range || s.date}</div>
+                                                            <div className="text-xs text-gray-400 truncate">{s.primary_app || ''}</div>
+                                                        </div>
+                                                        <div className="text-xs text-gray-500 line-clamp-2 max-w-[55%]">{s.summary || '（未生成摘要）'}</div>
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         )}
                         </div>
                     </div>
                 </div>
             </div>
+
+            {activeSessionId && (
+                <SessionDetailModal sessionId={activeSessionId} onClose={() => setActiveSessionId(null)} />
+            )}
 
             {/* Diff Detail Modal - 使用 Portal 确保在 body 根部渲染 */}
             {diffDetail && createPortal(

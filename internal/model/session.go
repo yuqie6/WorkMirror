@@ -25,6 +25,15 @@ type Session struct {
 	UpdatedAt      time.Time `gorm:"autoUpdateTime" json:"updated_at"`
 }
 
+// SessionSemanticUpdate 会话语义字段更新（用于部分字段更新）
+type SessionSemanticUpdate struct {
+	TimeRange      string
+	Category       string
+	Summary        string
+	SkillsInvolved []string
+	Metadata       JSONMap
+}
+
 // TableName 指定表名
 func (Session) TableName() string {
 	return "sessions"

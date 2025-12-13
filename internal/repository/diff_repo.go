@@ -64,6 +64,33 @@ func (r *DiffRepository) GetByTimeRange(ctx context.Context, startTime, endTime 
 	return diffs, nil
 }
 
+// GetByIDs 按 ID 列表批量查询 Diff（保持输入顺序）
+func (r *DiffRepository) GetByIDs(ctx context.Context, ids []int64) ([]model.Diff, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	var diffs []model.Diff
+	if err := r.db.WithContext(ctx).
+		Where("id IN ?", ids).
+		Find(&diffs).Error; err != nil {
+		return nil, fmt.Errorf("查询 Diff 失败: %w", err)
+	}
+
+	byID := make(map[int64]model.Diff, len(diffs))
+	for _, d := range diffs {
+		byID[d.ID] = d
+	}
+
+	ordered := make([]model.Diff, 0, len(diffs))
+	for _, id := range ids {
+		if d, ok := byID[id]; ok {
+			ordered = append(ordered, d)
+		}
+	}
+	return ordered, nil
+}
+
 // GetByFilePath 按文件路径查询
 func (r *DiffRepository) GetByFilePath(ctx context.Context, filePath string, limit int) ([]model.Diff, error) {
 	var diffs []model.Diff

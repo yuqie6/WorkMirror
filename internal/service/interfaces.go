@@ -16,6 +16,7 @@ type DiffRepository interface {
 	UpdateAIInsight(ctx context.Context, id int64, insight string, skills []string) error
 	GetByDate(ctx context.Context, date string) ([]model.Diff, error)
 	GetByTimeRange(ctx context.Context, startTime, endTime int64) ([]model.Diff, error)
+	GetByIDs(ctx context.Context, ids []int64) ([]model.Diff, error)
 	GetLanguageStats(ctx context.Context, startTime, endTime int64) ([]repository.LanguageStat, error)
 	CountByDateRange(ctx context.Context, startTime, endTime int64) (int64, error)
 	GetRecentAnalyzed(ctx context.Context, limit int) ([]model.Diff, error)
@@ -33,14 +34,17 @@ type EventRepository interface {
 type BrowserEventRepository interface {
 	BatchInsert(ctx context.Context, events []*model.BrowserEvent) error
 	GetByTimeRange(ctx context.Context, startTime, endTime int64) ([]model.BrowserEvent, error)
+	GetByIDs(ctx context.Context, ids []int64) ([]model.BrowserEvent, error)
 }
 
 type SessionRepository interface {
-	Create(ctx context.Context, session *model.Session) error
+	Create(ctx context.Context, session *model.Session) (bool, error)
 	UpdateSummaryOnly(ctx context.Context, id int64, summary string, metadata model.JSONMap) error
+	UpdateSemantic(ctx context.Context, id int64, update model.SessionSemanticUpdate) error
 	GetByDate(ctx context.Context, date string) ([]model.Session, error)
 	GetByTimeRange(ctx context.Context, startTime, endTime int64) ([]model.Session, error)
 	GetLastSession(ctx context.Context) (*model.Session, error)
+	GetByID(ctx context.Context, id int64) (*model.Session, error)
 }
 
 type SessionDiffRepository interface {
@@ -66,6 +70,7 @@ type Analyzer interface {
 	AnalyzeDiff(ctx context.Context, filePath, language, diffContent string, existingSkills []ai.SkillInfo) (*ai.DiffInsight, error)
 	GenerateDailySummary(ctx context.Context, req *ai.DailySummaryRequest) (*ai.DailySummaryResult, error)
 	GenerateWeeklySummary(ctx context.Context, req *ai.WeeklySummaryRequest) (*ai.WeeklySummaryResult, error)
+	GenerateSessionSummary(ctx context.Context, req *ai.SessionSummaryRequest) (*ai.SessionSummaryResult, error)
 }
 
 type RAGQuerier interface {

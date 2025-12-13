@@ -34,6 +34,7 @@ type Core struct {
 		AI       *service.AIService
 		Trends   *service.TrendService
 		Sessions *service.SessionService
+		SessionSemantic *service.SessionSemanticService
 	}
 
 	Clients struct {
@@ -93,6 +94,13 @@ func NewCore(cfgPath string) (*Core, error) {
 		c.Repos.Session,
 		c.Repos.SessionDiff,
 		&service.SessionServiceConfig{IdleGapMinutes: cfg.Collector.SessionIdleMin},
+	)
+	c.Services.SessionSemantic = service.NewSessionSemanticService(
+		analyzer,
+		c.Repos.Session,
+		c.Repos.Diff,
+		c.Repos.Event,
+		c.Repos.Browser,
 	)
 
 	// Optional SiliconFlow client 由 Agent 侧按需启动 RAG

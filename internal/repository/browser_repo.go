@@ -76,6 +76,33 @@ func (r *BrowserEventRepository) GetByTimeRange(ctx context.Context, startTime, 
 	return events, nil
 }
 
+// GetByIDs 按 ID 列表批量查询浏览器事件（保持输入顺序）
+func (r *BrowserEventRepository) GetByIDs(ctx context.Context, ids []int64) ([]model.BrowserEvent, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	var events []model.BrowserEvent
+	if err := r.db.WithContext(ctx).
+		Where("id IN ?", ids).
+		Find(&events).Error; err != nil {
+		return nil, fmt.Errorf("查询浏览器事件失败: %w", err)
+	}
+
+	byID := make(map[int64]model.BrowserEvent, len(events))
+	for _, e := range events {
+		byID[e.ID] = e
+	}
+
+	ordered := make([]model.BrowserEvent, 0, len(events))
+	for _, id := range ids {
+		if e, ok := byID[id]; ok {
+			ordered = append(ordered, e)
+		}
+	}
+	return ordered, nil
+}
+
 // GetDomainStats 获取域名统计
 func (r *BrowserEventRepository) GetDomainStats(ctx context.Context, startTime, endTime int64, limit int) ([]DomainStat, error) {
 	var stats []DomainStat

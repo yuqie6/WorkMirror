@@ -1,4 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+// @ts-ignore
+import { BuildSessionsForDate, EnrichSessionsForDate, GetSessionsByDate } from '../../../wailsjs/go/main/App';
+import SessionDetailModal, { SessionDTO } from '../sessions/SessionDetailModal';
 
 export interface DailySummary {
     date: string;
@@ -59,6 +62,16 @@ export interface SummaryViewProps {
 const isCodeEditor = (appName: string): boolean => {
     const codeEditors = ['code', 'cursor', 'goland', 'idea', 'pycharm', 'webstorm', 'vim', 'nvim', 'sublime', 'atom', 'vscode', 'android studio'];
     return codeEditors.some(editor => appName.toLowerCase().includes(editor));
+};
+
+const sessionCategoryLabel = (cat: string): string => {
+    switch ((cat || '').toLowerCase()) {
+        case 'technical': return '技术';
+        case 'learning': return '学习';
+        case 'exploration': return '探索';
+        case 'other': return '其他';
+        default: return cat || '其他';
+    }
 };
 
 const StatCard: React.FC<{ value: string | number; label: string; }> = ({ value, label }) => (
@@ -275,6 +288,58 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     summary, periodSummary, loading, error, onGenerate, onGeneratePeriod, skills = [], appStats = [],
     summaryIndex = [], selectedDate = null, onSelectDate, onReloadIndex,
 }) => {
+    const [sessions, setSessions] = useState<SessionDTO[]>([]);
+    const [sessionsLoading, setSessionsLoading] = useState(false);
+    const [sessionsError, setSessionsError] = useState<string | null>(null);
+    const [activeSessionId, setActiveSessionId] = useState<number | null>(null);
+
+    const reloadSessions = async (date: string) => {
+        setSessionsLoading(true);
+        setSessionsError(null);
+        try {
+            const res = await GetSessionsByDate(date);
+            setSessions(res || []);
+        } catch (e: any) {
+            setSessionsError(e?.message || '加载会话失败');
+            setSessions([]);
+        } finally {
+            setSessionsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (!summary?.date) {
+            setSessions([]);
+            return;
+        }
+        void reloadSessions(summary.date);
+    }, [summary?.date]);
+
+    const buildSessions = async () => {
+        if (!summary?.date) return;
+        setSessionsLoading(true);
+        try {
+            await BuildSessionsForDate(summary.date);
+            await reloadSessions(summary.date);
+        } catch (e: any) {
+            setSessionsError(e?.message || '切分会话失败');
+        } finally {
+            setSessionsLoading(false);
+        }
+    };
+
+    const enrichSessions = async () => {
+        if (!summary?.date) return;
+        setSessionsLoading(true);
+        try {
+            await EnrichSessionsForDate(summary.date);
+            await reloadSessions(summary.date);
+        } catch (e: any) {
+            setSessionsError(e?.message || '生成会话摘要失败');
+        } finally {
+            setSessionsLoading(false);
+        }
+    };
     const focusStats = useMemo(() => {
         if (!appStats.length) return { focusPercent: 0, codingTime: 0, totalTime: 0 };
         let codingTime = 0, totalTime = 0;
@@ -345,6 +410,65 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                     <div className="col-span-4"><div className="card"><h3 className="text-sm font-semibold text-gray-900 mb-3">技能分布</h3><div className="space-y-2">{skillDistribution.map((item, i) => (<div key={item.category}><div className="flex justify-between text-sm"><span className="text-gray-600">{item.label}</span><span>{item.percent}%</span></div><div className="h-2 bg-gray-100 rounded-full mt-1"><div className="h-full bg-accent-gold rounded-full" style={{ width: `${item.percent}%`, opacity: 1 - i * 0.2 }} /></div></div>))}</div></div></div>
                     <div className="col-span-8"><div className="card"><h3 className="text-sm font-semibold text-gray-900 mb-3">今日习得技能</h3><div className="flex flex-wrap gap-2">{summary.skills_gained?.map((s, i) => <span key={i} className="pill">{s}</span>)}{(!summary.skills_gained?.length) && <span className="text-sm text-gray-400">暂无</span>}</div></div></div>
                 </div>
+
+                {/* 会话列表（证据链入口） */}
+                <div className="card">
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="space-y-1">
+                            <h3 className="text-sm font-semibold text-gray-900">🧩 今日会话</h3>
+                            <p className="text-xs text-gray-400">点击会话可展开窗口/Diff/浏览证据</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <button className="text-xs px-3 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition" onClick={buildSessions} disabled={sessionsLoading}>
+                                切分
+                            </button>
+                            <button className="text-xs px-3 py-2 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 transition" onClick={enrichSessions} disabled={sessionsLoading}>
+                                生成摘要
+                            </button>
+                            <button className="text-xs px-3 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition" onClick={() => summary?.date && reloadSessions(summary.date)} disabled={sessionsLoading}>
+                                刷新
+                            </button>
+                        </div>
+                    </div>
+
+                    {sessionsLoading && sessions.length === 0 && (
+                        <div className="text-sm text-gray-400">加载中...</div>
+                    )}
+                    {sessionsError && (
+                        <div className="text-sm text-red-500 mb-2">{sessionsError}</div>
+                    )}
+                    {(!sessionsLoading && sessions.length === 0) && (
+                        <div className="text-sm text-gray-400">暂无会话记录（可先点击“切分”，再点击“生成摘要”）</div>
+                    )}
+                    {sessions.length > 0 && (
+                        <div className="space-y-2">
+                            {sessions.map((s) => (
+                                <button
+                                    key={s.id}
+                                    className="w-full text-left p-3 rounded-xl border border-gray-100 hover:border-amber-200 hover:bg-amber-50/40 transition"
+                                    onClick={() => setActiveSessionId(s.id)}
+                                >
+                                    <div className="flex items-center justify-between gap-3">
+                                        <div className="min-w-0">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-sm font-semibold text-gray-900">{s.time_range || '会话'}</span>
+                                                {s.category && <span className="pill">{sessionCategoryLabel(s.category)}</span>}
+                                                {(s.diff_count || 0) > 0 && <span className="text-xs text-gray-400">Diff {s.diff_count}</span>}
+                                                {(s.browser_count || 0) > 0 && <span className="text-xs text-gray-400">Browser {s.browser_count}</span>}
+                                            </div>
+                                            <div className="text-xs text-gray-400 truncate">{s.primary_app || ''}</div>
+                                        </div>
+                                        <div className="text-sm text-gray-700 line-clamp-2 max-w-[55%]">{s.summary || '（未生成摘要）'}</div>
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                {activeSessionId && (
+                    <SessionDetailModal sessionId={activeSessionId} onClose={() => setActiveSessionId(null)} />
+                )}
             </div>
         );
     };
