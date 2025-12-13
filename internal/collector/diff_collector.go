@@ -11,11 +11,20 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/yuqie6/mirror/internal/schema"
 )
+
+// hideWindow 设置 Windows 下隐藏命令行窗口
+func hideWindow(cmd *exec.Cmd) {
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		HideWindow:    true,
+		CreationFlags: 0x08000000, // CREATE_NO_WINDOW
+	}
+}
 
 // DiffCollector 文件 Diff 采集器
 type DiffCollector struct {
@@ -315,6 +324,7 @@ func (c *DiffCollector) gitDiff(ctx context.Context, repoRoot, filePath string) 
 
 	checkCmd := exec.CommandContext(timeoutCtx, "git", "ls-files", "--", relPath)
 	checkCmd.Dir = dir
+	hideWindow(checkCmd)
 	checkOutput, _ := checkCmd.Output()
 
 	isTracked := strings.TrimSpace(string(checkOutput)) != ""
@@ -340,11 +350,13 @@ func (c *DiffCollector) gitDiff(ctx context.Context, repoRoot, filePath string) 
 	// 获取未暂存的改动
 	cmd := exec.CommandContext(timeoutCtx, "git", "diff", "--", relPath)
 	cmd.Dir = dir
+	hideWindow(cmd)
 	output, err := cmd.Output()
 	if err != nil {
 		// 尝试获取已暂存的改动
 		cmd = exec.Command("git", "diff", "--cached", "--", filePath)
 		cmd.Dir = dir
+		hideWindow(cmd)
 		output, err = cmd.Output()
 		if err != nil {
 			return "", 0, 0, fmt.Errorf("执行 git diff 失败: %w", err)
