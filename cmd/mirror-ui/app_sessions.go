@@ -85,6 +85,25 @@ func (a *App) BuildSessionsForDate(date string) (*SessionBuildResultDTO, error) 
 	return &SessionBuildResultDTO{Created: created}, nil
 }
 
+// RebuildSessionsForDate 重建某天会话：创建一个更高的切分版本以覆盖展示，从而“清理旧碎片”
+func (a *App) RebuildSessionsForDate(date string) (*SessionBuildResultDTO, error) {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+
+	if a.core == nil || a.core.Services.Sessions == nil {
+		return nil, errors.New("会话服务未初始化")
+	}
+
+	ctx, cancel := context.WithTimeout(a.ctx, 60*time.Second)
+	defer cancel()
+
+	created, err := a.core.Services.Sessions.RebuildSessionsForDate(ctx, strings.TrimSpace(date))
+	if err != nil {
+		return nil, err
+	}
+	return &SessionBuildResultDTO{Created: created}, nil
+}
+
 // EnrichSessionsForDate 为日期内会话生成语义摘要/技能/证据索引（DeepSeek 未配置时自动降级）
 func (a *App) EnrichSessionsForDate(date string) (*SessionEnrichResultDTO, error) {
 	a.mu.RLock()

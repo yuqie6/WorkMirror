@@ -4,6 +4,8 @@ import {main} from '../models';
 
 export function BuildSessionsForDate(arg1:string):Promise<main.SessionBuildResultDTO>;
 
+export function RebuildSessionsForDate(arg1:string):Promise<main.SessionBuildResultDTO>;
+
 export function EnrichSessionsForDate(arg1:string):Promise<main.SessionEnrichResultDTO>;
 
 export function GetAppStats():Promise<Array<main.AppStatsDTO>>;

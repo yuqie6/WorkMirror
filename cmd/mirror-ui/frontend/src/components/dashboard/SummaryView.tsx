@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 // @ts-ignore
-import { BuildSessionsForDate, EnrichSessionsForDate, GetSessionsByDate } from '../../../wailsjs/go/main/App';
+import { BuildSessionsForDate, EnrichSessionsForDate, GetSessionsByDate, RebuildSessionsForDate } from '../../../wailsjs/go/main/App';
 import SessionDetailModal, { SessionDTO } from '../sessions/SessionDetailModal';
 
 export interface DailySummary {
@@ -324,6 +324,19 @@ const SummaryView: React.FC<SummaryViewProps> = ({
         }
     };
 
+    const rebuildSessions = async () => {
+        if (!summary?.date) return;
+        setSessionsLoading(true);
+        try {
+            await RebuildSessionsForDate(summary.date);
+            await reloadSessions(summary.date);
+        } catch (e: any) {
+            setSessionsError(e?.message || '重建会话失败');
+        } finally {
+            setSessionsLoading(false);
+        }
+    };
+
     const enrichSessions = async () => {
         if (!summary?.date) return;
         setSessionsLoading(true);
@@ -417,6 +430,9 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                         <div className="flex items-center gap-2">
                             <button className="text-xs px-3 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition" onClick={buildSessions} disabled={sessionsLoading}>
                                 切分
+                            </button>
+                            <button className="text-xs px-3 py-2 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 transition" onClick={rebuildSessions} disabled={sessionsLoading}>
+                                重建
                             </button>
                             <button className="text-xs px-3 py-2 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 transition" onClick={enrichSessions} disabled={sessionsLoading}>
                                 生成摘要

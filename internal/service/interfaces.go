@@ -42,6 +42,7 @@ type SessionRepository interface {
 	UpdateSemantic(ctx context.Context, id int64, update model.SessionSemanticUpdate) error
 	GetByDate(ctx context.Context, date string) ([]model.Session, error)
 	GetByTimeRange(ctx context.Context, startTime, endTime int64) ([]model.Session, error)
+	GetMaxSessionVersionByDate(ctx context.Context, date string) (int, error)
 	GetLastSession(ctx context.Context) (*model.Session, error)
 	GetByID(ctx context.Context, id int64) (*model.Session, error)
 }

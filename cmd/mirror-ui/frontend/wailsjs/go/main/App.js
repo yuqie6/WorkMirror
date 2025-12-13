@@ -6,6 +6,10 @@ export function BuildSessionsForDate(arg1) {
   return window['go']['main']['App']['BuildSessionsForDate'](arg1);
 }
 
+export function RebuildSessionsForDate(arg1) {
+  return window['go']['main']['App']['RebuildSessionsForDate'](arg1);
+}
+
 export function EnrichSessionsForDate(arg1) {
   return window['go']['main']['App']['EnrichSessionsForDate'](arg1);
 }

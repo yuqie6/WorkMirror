@@ -14,6 +14,8 @@ type SessionRepository struct {
 	db *gorm.DB
 }
 
+const latestSessionVersionPerDateSQL = "session_version = (SELECT MAX(session_version) FROM sessions s2 WHERE s2.date = sessions.date)"
+
 // NewSessionRepository 创建会话仓储
 func NewSessionRepository(db *gorm.DB) *SessionRepository {
 	return &SessionRepository{db: db}
@@ -91,11 +93,25 @@ func (r *SessionRepository) GetByTimeRange(ctx context.Context, startTime, endTi
 	var sessions []model.Session
 	if err := r.db.WithContext(ctx).
 		Where("start_time >= ? AND start_time <= ?", startTime, endTime).
+		Where(latestSessionVersionPerDateSQL).
 		Order("start_time ASC").
 		Find(&sessions).Error; err != nil {
 		return nil, fmt.Errorf("查询会话失败: %w", err)
 	}
 	return sessions, nil
+}
+
+// GetMaxSessionVersionByDate 获取某日期的最大切分版本号（无记录返回 0）
+func (r *SessionRepository) GetMaxSessionVersionByDate(ctx context.Context, date string) (int, error) {
+	var max int
+	if err := r.db.WithContext(ctx).
+		Model(&model.Session{}).
+		Select("COALESCE(MAX(session_version), 0)").
+		Where("date = ?", date).
+		Scan(&max).Error; err != nil {
+		return 0, fmt.Errorf("查询会话版本失败: %w", err)
+	}
+	return max, nil
 }
 
 // GetByID 按 ID 查询会话
@@ -113,7 +129,10 @@ func (r *SessionRepository) GetByID(ctx context.Context, id int64) (*model.Sessi
 // GetLastSession 获取最近一次会话（按 end_time）
 func (r *SessionRepository) GetLastSession(ctx context.Context) (*model.Session, error) {
 	var session model.Session
-	err := r.db.WithContext(ctx).Order("end_time DESC").First(&session).Error
+	err := r.db.WithContext(ctx).
+		Where(latestSessionVersionPerDateSQL).
+		Order("end_time DESC").
+		First(&session).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil

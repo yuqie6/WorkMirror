@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/yuqie6/mirror/internal/model"
@@ -12,12 +13,12 @@ import (
 
 // SessionService 基于事件流切分会话（工程规则优先）
 type SessionService struct {
-	eventRepo   EventRepository
-	diffRepo    DiffRepository
-	browserRepo BrowserEventRepository
-	sessionRepo SessionRepository
+	eventRepo       EventRepository
+	diffRepo        DiffRepository
+	browserRepo     BrowserEventRepository
+	sessionRepo     SessionRepository
 	sessionDiffRepo SessionDiffRepository
-	cfg         *SessionServiceConfig
+	cfg             *SessionServiceConfig
 }
 
 type SessionServiceConfig struct {
@@ -39,12 +40,12 @@ func NewSessionService(
 		cfg.IdleGapMinutes = 6
 	}
 	return &SessionService{
-		eventRepo:   eventRepo,
-		diffRepo:    diffRepo,
-		browserRepo: browserRepo,
-		sessionRepo: sessionRepo,
+		eventRepo:       eventRepo,
+		diffRepo:        diffRepo,
+		browserRepo:     browserRepo,
+		sessionRepo:     sessionRepo,
 		sessionDiffRepo: sessionDiffRepo,
-		cfg:         cfg,
+		cfg:             cfg,
 	}
 }
 
@@ -74,11 +75,44 @@ func (s *SessionService) BuildSessionsForDate(ctx context.Context, date string) 
 	}
 	start := t.UnixMilli()
 	end := t.Add(24*time.Hour).UnixMilli() - 1
-	return s.BuildSessionsForRange(ctx, start, end)
+	return s.buildSessionsForRange(ctx, start, end, nil)
+}
+
+// RebuildSessionsForDate 重建某天会话：创建一个更高的切分版本，以“覆盖展示”方式清理旧碎片（不删除旧数据）
+func (s *SessionService) RebuildSessionsForDate(ctx context.Context, date string) (int, error) {
+	loc := time.Local
+	t, err := time.ParseInLocation("2006-01-02", date, loc)
+	if err != nil {
+		return 0, fmt.Errorf("解析日期失败: %w", err)
+	}
+	start := t.UnixMilli()
+	end := t.Add(24*time.Hour).UnixMilli() - 1
+
+	targetDate := strings.TrimSpace(date)
+	return s.buildSessionsForRange(ctx, start, end, func(d string, max int) int {
+		if d == targetDate {
+			if max <= 0 {
+				return 1
+			}
+			return max + 1
+		}
+		if max <= 0 {
+			return 1
+		}
+		return max
+	})
 }
 
 // BuildSessionsForRange 按时间范围切分并写入 sessions 表
 func (s *SessionService) BuildSessionsForRange(ctx context.Context, startTime, endTime int64) (int, error) {
+	return s.buildSessionsForRange(ctx, startTime, endTime, nil)
+}
+
+func (s *SessionService) buildSessionsForRange(
+	ctx context.Context,
+	startTime, endTime int64,
+	versionStrategy func(date string, maxVersion int) int,
+) (int, error) {
 	if startTime >= endTime {
 		return 0, nil
 	}
@@ -104,6 +138,10 @@ func (s *SessionService) BuildSessionsForRange(ctx context.Context, startTime, e
 	// 绑定浏览器事件（不参与切分）
 	s.attachBrowserEvents(sessions, browserEvents)
 
+	if err := s.assignSessionVersions(ctx, sessions, versionStrategy); err != nil {
+		return 0, err
+	}
+
 	created := 0
 	for _, sess := range sessions {
 		createdNow, err := s.sessionRepo.Create(ctx, sess)
@@ -128,6 +166,62 @@ func (s *SessionService) BuildSessionsForRange(ctx context.Context, startTime, e
 	return created, nil
 }
 
+func (s *SessionService) assignSessionVersions(
+	ctx context.Context,
+	sessions []*model.Session,
+	versionStrategy func(date string, maxVersion int) int,
+) error {
+	if len(sessions) == 0 || s.sessionRepo == nil {
+		return nil
+	}
+	if versionStrategy == nil {
+		versionStrategy = func(_ string, max int) int {
+			if max <= 0 {
+				return 1
+			}
+			return max
+		}
+	}
+
+	uniqueDates := make(map[string]struct{}, 2)
+	for _, sess := range sessions {
+		if sess == nil {
+			continue
+		}
+		d := strings.TrimSpace(sess.Date)
+		if d == "" {
+			d = formatDate(sess.StartTime)
+			sess.Date = d
+		}
+		uniqueDates[d] = struct{}{}
+	}
+
+	maxByDate := make(map[string]int, len(uniqueDates))
+	for d := range uniqueDates {
+		maxV, err := s.sessionRepo.GetMaxSessionVersionByDate(ctx, d)
+		if err != nil {
+			return err
+		}
+		maxByDate[d] = maxV
+	}
+
+	for _, sess := range sessions {
+		if sess == nil {
+			continue
+		}
+		d := strings.TrimSpace(sess.Date)
+		if d == "" {
+			d = formatDate(sess.StartTime)
+			sess.Date = d
+		}
+		sess.SessionVersion = versionStrategy(d, maxByDate[d])
+		if sess.SessionVersion <= 0 {
+			sess.SessionVersion = 1
+		}
+	}
+	return nil
+}
+
 func (s *SessionService) splitSessions(events []model.Event, diffs []model.Diff, startTime, endTime int64) []*model.Session {
 	idleMs := int64(s.cfg.IdleGapMinutes) * 60 * 1000
 
@@ -141,16 +235,23 @@ func (s *SessionService) splitSessions(events []model.Event, diffs []model.Diff,
 	var lastActivityEnd int64
 	appDurations := map[string]int{}
 	diffIDs := make([]int64, 0, 8)
+	windowSeconds := 0
 
 	openSession := func(start int64) {
 		currentStart = start
 		lastActivityEnd = start
 		appDurations = map[string]int{}
 		diffIDs = diffIDs[:0]
+		windowSeconds = 0
 	}
 
 	closeSession := func(end int64) {
 		if currentStart == 0 || end <= currentStart {
+			return
+		}
+		// 不产生纯 diff 会话：window 事件是会话锚点，否则容易因事件晚到导致碎片化/重复。
+		if windowSeconds <= 0 {
+			currentStart = 0
 			return
 		}
 		primaryApp := ""
@@ -168,33 +269,19 @@ func (s *SessionService) splitSessions(events []model.Event, diffs []model.Diff,
 		}
 
 		sessions = append(sessions, &model.Session{
-			Date:           formatDate(currentStart),
-			StartTime:      currentStart,
-			EndTime:        end,
-			PrimaryApp:     primaryApp,
-			SessionVersion: 1,
-			TimeRange:      formatTimeRange(currentStart, end),
-			Metadata:       meta,
+			Date:       formatDate(currentStart),
+			StartTime:  currentStart,
+			EndTime:    end,
+			PrimaryApp: primaryApp,
+			TimeRange:  formatTimeRange(currentStart, end),
+			Metadata:   meta,
 		})
 		currentStart = 0
 	}
 
-	// 若无 window events，退化为按 diff 切分
+	// 没有 window events 时不切分：避免仅靠 diff 产生“碎片会话”，且 window 事件可能是晚到数据。
 	if len(events) == 0 {
-		if len(diffs) == 0 {
-			return nil
-		}
-		openSession(diffs[0].Timestamp)
-		for i, d := range diffs {
-			if i > 0 && d.Timestamp-lastActivityEnd >= idleMs {
-				closeSession(lastActivityEnd)
-				openSession(d.Timestamp)
-			}
-			diffIDs = append(diffIDs, d.ID)
-			lastActivityEnd = d.Timestamp
-		}
-		closeSession(lastActivityEnd)
-		return sessions
+		return nil
 	}
 
 	openSession(events[0].Timestamp)
@@ -231,6 +318,7 @@ func (s *SessionService) splitSessions(events []model.Event, diffs []model.Diff,
 		// 累计 app 时长
 		if ev.AppName != "" && ev.Duration > 0 {
 			appDurations[ev.AppName] += ev.Duration
+			windowSeconds += ev.Duration
 		}
 
 		if evEnd > lastActivityEnd {
