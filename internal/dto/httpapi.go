@@ -1,7 +1,7 @@
 package dto
 
 // 注意：本包用于承载“对外契约”的 DTO（与前端/HTTP API 保持稳定）。
-// 不要在这里放 GORM/持久化细节；内部领域模型请留在 internal/model。
+// 不要在这里放 GORM/持久化细节；内部持久化 schema 请见 internal/schema；业务逻辑收敛在 internal/service。
 
 type DailySummaryDTO struct {
 	Date         string   `json:"date"`

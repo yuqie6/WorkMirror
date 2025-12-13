@@ -258,7 +258,7 @@ func (c *DiffCollector) captureDiff(ctx context.Context, filePath string) (*sche
 	}
 
 	ext := strings.ToLower(filepath.Ext(filePath))
-	language := schema.GetLanguageFromExt(ext)
+	language := GetLanguageFromExt(ext)
 
 	return &schema.Diff{
 		Timestamp:    time.Now().UnixMilli(),

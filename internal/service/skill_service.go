@@ -108,8 +108,8 @@ func (s *SkillService) ApplyContributions(ctx context.Context, contributions []S
 			continue
 		}
 
-		if skill == nil {
-			skill = schema.NewSkillNode(key, c.SkillName, c.Category)
+	if skill == nil {
+			skill = NewSkillNode(key, c.SkillName, c.Category)
 			skill.ParentKey = parentKey
 		} else {
 			if c.SkillName != "" {
@@ -124,7 +124,7 @@ func (s *SkillService) ApplyContributions(ctx context.Context, contributions []S
 		}
 
 		if a.expSum > 0 {
-			skill.AddExp(a.expSum)
+			AddSkillExp(skill, a.expSum)
 		}
 		skillsToUpdate = append(skillsToUpdate, skill)
 	}
@@ -292,25 +292,6 @@ func normalizeKey(name string) string {
 	return result.String()
 }
 
-// addSkillExp 给技能添加经验（用于衰减恢复等场景）
-func (s *SkillService) addSkillExp(ctx context.Context, skillKey string, exp float64) error {
-	skill, err := s.skillRepo.GetByKey(ctx, skillKey)
-	if err != nil {
-		return err
-	}
-
-	if skill == nil {
-		// 创建新技能（使用 key 作为名称，分类为 other）
-		skill = schema.NewSkillNode(skillKey, schema.NormalizeSkillName(skillKey), "other")
-	}
-
-	// 添加经验
-	skill.AddExp(exp)
-
-	// 保存
-	return s.skillRepo.Upsert(ctx, skill)
-}
-
 // ApplyDecayToAll 对所有技能应用衰减
 func (s *SkillService) ApplyDecayToAll(ctx context.Context) error {
 	skills, err := s.skillRepo.GetAll(ctx)
@@ -319,18 +300,23 @@ func (s *SkillService) ApplyDecayToAll(ctx context.Context) error {
 	}
 
 	decayed := 0
-	for _, skill := range skills {
-		if skill.DaysInactive() > 7 {
-			oldExp := skill.Exp
-			skill.ApplyDecay()
-			if skill.Exp != oldExp {
-				if err := s.skillRepo.Upsert(ctx, &skill); err != nil {
-					slog.Warn("保存技能衰减失败", "skill", skill.Key, "error", err)
-					continue
-				}
-				decayed++
-			}
+	for i := range skills {
+		skill := &skills[i]
+		if SkillDaysInactive(skill) <= 7 {
+			continue
 		}
+
+		oldExp := skill.Exp
+		ApplySkillDecay(skill)
+		if skill.Exp == oldExp {
+			continue
+		}
+
+		if err := s.skillRepo.Upsert(ctx, skill); err != nil {
+			slog.Warn("保存技能衰减失败", "skill", skill.Key, "error", err)
+			continue
+		}
+		decayed++
 	}
 
 	if decayed > 0 {
@@ -473,7 +459,7 @@ type SkillNodeView struct {
 
 // calculateTrend 计算技能趋势
 func (s *SkillService) calculateTrend(skill *schema.SkillNode) string {
-	daysInactive := skill.DaysInactive()
+	daysInactive := SkillDaysInactive(skill)
 	if daysInactive == 0 {
 		return "up"
 	} else if daysInactive > 7 {

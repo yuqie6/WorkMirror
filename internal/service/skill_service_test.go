@@ -110,8 +110,8 @@ func TestNormalizeKey(t *testing.T) {
 
 func TestUpdateSkillsFromDiffsWithCategory(t *testing.T) {
 	ctx := context.Background()
-	existingParent := schema.NewSkillNode("go", "Go", "language")
-	existingChild := schema.NewSkillNode("reactjs", "ReactJS", "other")
+	existingParent := NewSkillNode("go", "Go", "language")
+	existingChild := NewSkillNode("reactjs", "ReactJS", "other")
 	repo := newFakeSkillRepo(existingParent, existingChild)
 
 	svc := NewSkillService(repo, fakeDiffRepo{}, nil, DefaultExpPolicy{})
@@ -163,10 +163,10 @@ func TestUpdateSkillsFromDiffsWithCategory_EmptySkillsNoop(t *testing.T) {
 
 func TestApplyDecayToAll(t *testing.T) {
 	ctx := context.Background()
-	oldSkill := schema.NewSkillNode("go", "Go", "language")
+	oldSkill := NewSkillNode("go", "Go", "language")
 	oldSkill.Exp = 100
 	oldSkill.LastActive = time.Now().Add(-10 * 24 * time.Hour).UnixMilli()
-	recentSkill := schema.NewSkillNode("react", "React", "framework")
+	recentSkill := NewSkillNode("react", "React", "framework")
 	recentSkill.Exp = 50
 	recentSkill.LastActive = time.Now().Add(-2 * 24 * time.Hour).UnixMilli()
 

@@ -9,20 +9,20 @@ import (
 // Session AI 生成的智能会话
 // 数据量级：千级/年
 type Session struct {
-	ID             int64     `gorm:"primaryKey;autoIncrement" json:"id"`
-	Date           string    `gorm:"size:10;index" json:"date"`          // YYYY-MM-DD（冗余字段，便于按天查询）
-	StartTime      int64     `gorm:"index" json:"start_time"`            // Unix 时间戳（毫秒）
-	EndTime        int64     `gorm:"index" json:"end_time"`              // Unix 时间戳（毫秒）
-	PrimaryApp     string    `gorm:"size:255;index" json:"primary_app"`  // 主应用（时长最大）
-	SessionVersion int       `gorm:"default:1" json:"session_version"`   // 切分规则版本号
-	TimeRange      string    `gorm:"size:20" json:"time_range"`          // 兼容旧字段："14:00-16:00"
-	Category       string    `gorm:"size:50" json:"category"`            // 兼容旧字段：Coding, Reading, Meeting
-	Summary        string    `gorm:"type:text" json:"summary"`           // AI 生成的该时段行为总结
-	SkillsInvolved JSONArray `gorm:"type:text" json:"skills_involved"`   // 涉及技能 ["Go", "Redis"]
-	EmbeddingID    string    `gorm:"size:100;index" json:"embedding_id"` // 向量存储 ID
-	Metadata       JSONMap   `gorm:"type:text" json:"metadata"`          // 结构化上下文与证据关联（JSON）
-	CreatedAt      time.Time `gorm:"autoCreateTime" json:"created_at"`
-	UpdatedAt      time.Time `gorm:"autoUpdateTime" json:"updated_at"`
+	ID             int64     `gorm:"primaryKey;autoIncrement"`
+	Date           string    `gorm:"size:10;index"`        // YYYY-MM-DD（冗余字段，便于按天查询）
+	StartTime      int64     `gorm:"index"`                // Unix 时间戳（毫秒）
+	EndTime        int64     `gorm:"index"`                // Unix 时间戳（毫秒）
+	PrimaryApp     string    `gorm:"size:255;index"`       // 主应用（时长最大）
+	SessionVersion int       `gorm:"default:1"`            // 切分规则版本号
+	TimeRange      string    `gorm:"size:20"`              // 兼容旧字段："14:00-16:00"
+	Category       string    `gorm:"size:50"`              // 兼容旧字段：Coding, Reading, Meeting
+	Summary        string    `gorm:"type:text"`            // AI 生成的该时段行为总结
+	SkillsInvolved JSONArray `gorm:"type:text"`            // 涉及技能 ["Go", "Redis"]
+	EmbeddingID    string    `gorm:"size:100;index"`       // 向量存储 ID
+	Metadata       JSONMap   `gorm:"type:text"`            // 结构化上下文与证据关联（JSON）
+	CreatedAt      time.Time `gorm:"autoCreateTime"`
+	UpdatedAt      time.Time `gorm:"autoUpdateTime"`
 }
 
 // SessionSemanticUpdate 会话语义字段更新（用于部分字段更新）

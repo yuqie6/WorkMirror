@@ -38,7 +38,7 @@ func (r *SessionRepository) Create(ctx context.Context, session *schema.Session)
 		session.ID = existing.ID
 		return false, nil
 	}
-	if err != nil && err != gorm.ErrRecordNotFound {
+	if err != gorm.ErrRecordNotFound {
 		return false, fmt.Errorf("查询会话失败: %w", err)
 	}
 

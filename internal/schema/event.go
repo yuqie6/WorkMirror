@@ -10,14 +10,14 @@ import (
 // Event 原始事件 - 记录用户的窗口活动
 // 数据量级：千万级/年
 type Event struct {
-	ID        int64     `gorm:"primaryKey;autoIncrement" json:"id"`
-	Timestamp int64     `gorm:"index" json:"timestamp"`         // Unix 时间戳 (毫秒)
-	Source    string    `gorm:"size:50" json:"source"`          // 来源: window, chrome, vscode
-	AppName   string    `gorm:"size:255;index" json:"app_name"` // 应用名: Chrome.exe
-	Title     string    `gorm:"type:text" json:"title"`         // 窗口标题 (已脱敏)
-	Duration  int       `gorm:"default:0" json:"duration"`      // 持续时长 (秒)
-	Metadata  JSONMap   `gorm:"type:text" json:"metadata"`      // 扩展字段 (git branch, url)
-	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
+	ID        int64     `gorm:"primaryKey;autoIncrement"`
+	Timestamp int64     `gorm:"index"`         // Unix 时间戳 (毫秒)
+	Source    string    `gorm:"size:50"`      // 来源: window, chrome, vscode
+	AppName   string    `gorm:"size:255;index"` // 应用名: Chrome.exe
+	Title     string    `gorm:"type:text"`    // 窗口标题 (已脱敏)
+	Duration  int       `gorm:"default:0"`    // 持续时长 (秒)
+	Metadata  JSONMap   `gorm:"type:text"`    // 扩展字段 (git branch, url)
+	CreatedAt time.Time `gorm:"autoCreateTime"`
 }
 
 // TableName 指定表名

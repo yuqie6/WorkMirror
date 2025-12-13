@@ -1,4 +1,4 @@
-package schema
+package service
 
 import "strings"
 
@@ -43,9 +43,11 @@ func GetSkillCategory(skillName string) SkillCategory {
 
 // NormalizeSkillName 标准化技能名称
 func NormalizeSkillName(skillName string) string {
-	if len(skillName) == 0 {
-		return skillName
+	s := strings.TrimSpace(skillName)
+	if s == "" {
+		return s
 	}
-	// 首字母大写
-	return strings.ToUpper(skillName[:1]) + skillName[1:]
+	runes := []rune(s)
+	runes[0] = []rune(strings.ToUpper(string(runes[0])))[0]
+	return string(runes)
 }

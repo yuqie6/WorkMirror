@@ -219,7 +219,7 @@ func (s *TrendService) GetTrendReport(ctx context.Context, period TrendPeriod) (
 			if sk.Category != "" {
 				category = sk.Category
 			}
-			daysInactive = sk.DaysInactive()
+			daysInactive = SkillDaysInactive(&sk)
 		}
 
 		growthRate := calcGrowthRateFloat(curExp, prevExp)
