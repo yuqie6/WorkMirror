@@ -42,7 +42,6 @@ func WriteFile(path string, cfg *Config) error {
 			"buffer_size":        cfg.Collector.BufferSize,
 			"flush_batch_size":   cfg.Collector.FlushBatchSize,
 			"flush_interval_sec": cfg.Collector.FlushIntervalSec,
-			"code_editors":       cfg.Collector.CodeEditors,
 			"session_idle_min":   cfg.Collector.SessionIdleMin,
 		},
 		"storage": map[string]any{

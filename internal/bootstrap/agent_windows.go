@@ -123,17 +123,17 @@ func NewAgentRuntime(ctx context.Context, cfgPath string) (*AgentRuntime, error)
 
 	// AI 定时分析（optional）
 	if core.Clients.DeepSeek != nil && core.Clients.DeepSeek.IsConfigured() {
-		go runAIAnalysisLoop(ctx, core.Services.AI, 5*time.Minute)
+		go runPeriodic(ctx, 5*time.Minute, func() { analyzeWithRetry(ctx, core.Services.AI) })
 	}
 
 	// Session 定时切分（可离线，无需 AI）
 	if core.Services.Sessions != nil {
-		go runSessionSplitLoop(ctx, core.Services.Sessions, 5*time.Minute)
+		go runPeriodic(ctx, 5*time.Minute, func() { splitWithRetry(ctx, core.Services.Sessions) })
 	}
 
 	// Session 语义补全（用于证据链，DeepSeek 未配置时自动降级为规则摘要）
 	if core.Services.SessionSemantic != nil {
-		go runSessionSemanticLoop(ctx, core.Services.SessionSemantic, 10*time.Minute)
+		go runPeriodic(ctx, 10*time.Minute, func() { enrichWithRetry(ctx, core.Services.SessionSemantic) })
 	}
 
 	return rt, nil
@@ -158,19 +158,18 @@ func (rt *AgentRuntime) Close() error {
 	return rt.Core.Close()
 }
 
-// runAIAnalysisLoop 定时运行 AI 分析（与 cmd 层解耦）
-func runAIAnalysisLoop(ctx context.Context, aiService *service.AIService, interval time.Duration) {
+func runPeriodic(ctx context.Context, interval time.Duration, fn func()) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
-	analyzeWithRetry(ctx, aiService)
+	fn()
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			analyzeWithRetry(ctx, aiService)
+			fn()
 		}
 	}
 }
@@ -182,44 +181,11 @@ func analyzeWithRetry(ctx context.Context, aiService *service.AIService) {
 	_, _ = aiService.AnalyzePendingDiffs(ctx, 10)
 }
 
-// runSessionSplitLoop 定时运行会话切分（增量）
-func runSessionSplitLoop(ctx context.Context, sessionService *service.SessionService, interval time.Duration) {
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
-
-	splitWithRetry(ctx, sessionService)
-
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			splitWithRetry(ctx, sessionService)
-		}
-	}
-}
-
 func splitWithRetry(ctx context.Context, sessionService *service.SessionService) {
 	if sessionService == nil {
 		return
 	}
 	_, _ = sessionService.BuildSessionsIncremental(ctx)
-}
-
-func runSessionSemanticLoop(ctx context.Context, svc *service.SessionSemanticService, interval time.Duration) {
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
-
-	enrichWithRetry(ctx, svc)
-
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			enrichWithRetry(ctx, svc)
-		}
-	}
 }
 
 func enrichWithRetry(ctx context.Context, svc *service.SessionSemanticService) {

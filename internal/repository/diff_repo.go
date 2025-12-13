@@ -1,11 +1,10 @@
 package repository
 
 import (
-	"errors"
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
-	"time"
 
 	"github.com/yuqie6/mirror/internal/model"
 	"gorm.io/gorm"
@@ -32,14 +31,10 @@ func (r *DiffRepository) Create(ctx context.Context, diff *model.Diff) error {
 
 // GetByDate 按日期查询 Diff
 func (r *DiffRepository) GetByDate(ctx context.Context, date string) ([]model.Diff, error) {
-	loc := time.Local
-	t, err := time.ParseInLocation("2006-01-02", date, loc)
+	startTime, endTime, err := DayRange(date)
 	if err != nil {
-		return nil, fmt.Errorf("解析日期失败: %w", err)
+		return nil, err
 	}
-
-	startTime := t.UnixMilli()
-	endTime := t.Add(24*time.Hour).UnixMilli() - 1
 
 	var diffs []model.Diff
 	if err := r.db.WithContext(ctx).

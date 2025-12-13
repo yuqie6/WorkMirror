@@ -1,12 +1,8 @@
-//go:build windows
+package service
 
-package httpapi
+import "time"
 
-import (
-	"time"
-)
-
-func formatTimeRangeMs(startMs, endMs int64) string {
+func FormatTimeRangeMs(startMs, endMs int64) string {
 	if startMs <= 0 || endMs <= 0 || endMs <= startMs {
 		return ""
 	}

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"time"
 
 	"github.com/yuqie6/mirror/internal/model"
 	"gorm.io/gorm"
@@ -44,14 +43,10 @@ func (r *BrowserEventRepository) BatchInsert(ctx context.Context, events []*mode
 
 // GetByDate 按日期查询
 func (r *BrowserEventRepository) GetByDate(ctx context.Context, date string) ([]model.BrowserEvent, error) {
-	loc := time.Local
-	t, err := time.ParseInLocation("2006-01-02", date, loc)
+	startTime, endTime, err := DayRange(date)
 	if err != nil {
-		return nil, fmt.Errorf("解析日期失败: %w", err)
+		return nil, err
 	}
-
-	startTime := t.UnixMilli()
-	endTime := t.Add(24*time.Hour).UnixMilli() - 1
 
 	var events []model.BrowserEvent
 	if err := r.db.WithContext(ctx).

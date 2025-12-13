@@ -673,7 +673,7 @@ func (a *apiServer) getSkillSessions(w http.ResponseWriter, r *http.Request) {
 		browserIDs := model.GetInt64Slice(s.Metadata, "browser_event_ids")
 		timeRange := strings.TrimSpace(s.TimeRange)
 		if timeRange == "" {
-			timeRange = formatTimeRangeMs(s.StartTime, s.EndTime)
+			timeRange = service.FormatTimeRangeMs(s.StartTime, s.EndTime)
 		}
 		result = append(result, SessionDTO{
 			ID:             s.ID,
@@ -920,7 +920,7 @@ func (a *apiServer) getSessionsByDate(w http.ResponseWriter, r *http.Request) {
 		browserIDs := model.GetInt64Slice(s.Metadata, "browser_event_ids")
 		timeRange := strings.TrimSpace(s.TimeRange)
 		if timeRange == "" {
-			timeRange = formatTimeRangeMs(s.StartTime, s.EndTime)
+			timeRange = service.FormatTimeRangeMs(s.StartTime, s.EndTime)
 		}
 		result = append(result, SessionDTO{
 			ID:             s.ID,
@@ -1008,7 +1008,7 @@ func (a *apiServer) getSessionDetail(w http.ResponseWriter, r *http.Request) {
 
 	timeRange := strings.TrimSpace(sess.TimeRange)
 	if timeRange == "" {
-		timeRange = formatTimeRangeMs(sess.StartTime, sess.EndTime)
+		timeRange = service.FormatTimeRangeMs(sess.StartTime, sess.EndTime)
 	}
 
 	dto := &SessionDetailDTO{

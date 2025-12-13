@@ -273,7 +273,7 @@ func (s *SessionService) splitSessions(events []model.Event, diffs []model.Diff,
 			StartTime:  currentStart,
 			EndTime:    end,
 			PrimaryApp: primaryApp,
-			TimeRange:  formatTimeRange(currentStart, end),
+			TimeRange:  FormatTimeRangeMs(currentStart, end),
 			Metadata:   meta,
 		})
 		currentStart = 0
@@ -391,13 +391,4 @@ func (s *SessionService) attachBrowserEvents(sessions []*model.Session, events [
 
 func formatDate(ts int64) string {
 	return time.UnixMilli(ts).Format("2006-01-02")
-}
-
-func formatTimeRange(startMs, endMs int64) string {
-	if startMs <= 0 || endMs <= 0 || endMs <= startMs {
-		return ""
-	}
-	start := time.UnixMilli(startMs).Format("15:04")
-	end := time.UnixMilli(endMs).Format("15:04")
-	return start + "-" + end
 }

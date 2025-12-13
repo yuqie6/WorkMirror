@@ -8,6 +8,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -180,23 +181,10 @@ func isRetryableError(err error) bool {
 	}
 	errStr := err.Error()
 	// 网络错误或 5xx 错误可重试
-	return contains(errStr, "timeout") ||
-		contains(errStr, "connection") ||
-		contains(errStr, "500") ||
-		contains(errStr, "502") ||
-		contains(errStr, "503") ||
-		contains(errStr, "504")
-}
-
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsImpl(s, substr))
-}
-
-func containsImpl(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
+	return strings.Contains(errStr, "timeout") ||
+		strings.Contains(errStr, "connection") ||
+		strings.Contains(errStr, "500") ||
+		strings.Contains(errStr, "502") ||
+		strings.Contains(errStr, "503") ||
+		strings.Contains(errStr, "504")
 }

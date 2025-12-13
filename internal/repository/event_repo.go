@@ -62,16 +62,10 @@ func (r *EventRepository) GetByTimeRange(ctx context.Context, startTime, endTime
 
 // GetByDate 按日期查询事件
 func (r *EventRepository) GetByDate(ctx context.Context, date string) ([]model.Event, error) {
-	// 解析日期为时间戳范围
-	loc := time.Local
-	t, err := time.ParseInLocation("2006-01-02", date, loc)
+	startTime, endTime, err := DayRange(date)
 	if err != nil {
-		return nil, fmt.Errorf("解析日期失败: %w", err)
+		return nil, err
 	}
-
-	startTime := t.UnixMilli()
-	endTime := t.Add(24*time.Hour).UnixMilli() - 1
-
 	return r.GetByTimeRange(ctx, startTime, endTime)
 }
 
