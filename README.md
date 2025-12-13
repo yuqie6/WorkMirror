@@ -42,8 +42,11 @@ go build -trimpath -ldflags "-H=windowsgui -s -w" -o .\mirror.exe .\cmd\mirror-a
 前端源码位于 `frontend/`，开发调试建议：
 
 ```powershell
-# 启动 agent 后，设置 VITE_API_TARGET 指向 agent 的本地地址（端口为自动分配）
-$env:VITE_API_TARGET="http://127.0.0.1:<port>"
+# 启动 agent 后，端口为自动分配；agent 会把地址写到 .\data\http_base_url.txt
+$pwd.Path
+Set-Location ".\\frontend"
+$env:VITE_API_TARGET = Get-Content "..\\data\\http_base_url.txt"
+pnpm install
 pnpm dev
 ```
 

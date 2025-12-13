@@ -99,6 +99,7 @@ func Start(ctx context.Context, rt *bootstrap.AgentRuntime, opts Options) (*Loca
 		}
 	}()
 
+	writeBaseURLFile(baseURL)
 	slog.Info("本地 HTTP 已启动", "base_url", baseURL)
 	return ls, nil
 }
@@ -115,6 +116,19 @@ func (s *LocalServer) Shutdown(ctx context.Context) error {
 		return nil
 	}
 	return s.srv.Shutdown(ctx)
+}
+
+func writeBaseURLFile(baseURL string) {
+	exe, err := os.Executable()
+	if err != nil {
+		return
+	}
+	exeDir := filepath.Dir(exe)
+	dataDir := filepath.Join(exeDir, "data")
+	if err := os.MkdirAll(dataDir, 0o755); err != nil {
+		return
+	}
+	_ = os.WriteFile(filepath.Join(dataDir, "http_base_url.txt"), []byte(baseURL), 0o644)
 }
 
 type apiServer struct {
