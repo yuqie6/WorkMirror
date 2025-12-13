@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/yuqie6/mirror/internal/model"
+	"github.com/yuqie6/mirror/internal/schema"
 	"gorm.io/gorm"
 )
 
@@ -21,7 +21,7 @@ func NewSessionRepository(db *gorm.DB) *SessionRepository {
 }
 
 // Create 创建会话（尽量保持幂等：已存在则复用 ID）
-func (r *SessionRepository) Create(ctx context.Context, session *model.Session) (bool, error) {
+func (r *SessionRepository) Create(ctx context.Context, session *schema.Session) (bool, error) {
 	if session == nil {
 		return false, fmt.Errorf("session is nil")
 	}
@@ -30,7 +30,7 @@ func (r *SessionRepository) Create(ctx context.Context, session *model.Session) 
 	}
 
 	// 幂等保护：同一切分版本下，start/end 相同视为同一会话
-	var existing model.Session
+	var existing schema.Session
 	err := r.db.WithContext(ctx).
 		Where("start_time = ? AND end_time = ? AND session_version = ?", session.StartTime, session.EndTime, session.SessionVersion).
 		First(&existing).Error
@@ -49,7 +49,7 @@ func (r *SessionRepository) Create(ctx context.Context, session *model.Session) 
 }
 
 // UpdateSemantic 更新会话语义字段（允许部分更新）
-func (r *SessionRepository) UpdateSemantic(ctx context.Context, id int64, update model.SessionSemanticUpdate) error {
+func (r *SessionRepository) UpdateSemantic(ctx context.Context, id int64, update schema.SessionSemanticUpdate) error {
 	updates := map[string]interface{}{}
 	if update.TimeRange != "" {
 		updates["time_range"] = update.TimeRange
@@ -61,7 +61,7 @@ func (r *SessionRepository) UpdateSemantic(ctx context.Context, id int64, update
 		updates["summary"] = update.Summary
 	}
 	if len(update.SkillsInvolved) > 0 {
-		updates["skills_involved"] = model.JSONArray(update.SkillsInvolved)
+		updates["skills_involved"] = schema.JSONArray(update.SkillsInvolved)
 	}
 	if update.Metadata != nil {
 		updates["metadata"] = update.Metadata
@@ -69,14 +69,14 @@ func (r *SessionRepository) UpdateSemantic(ctx context.Context, id int64, update
 	if len(updates) == 0 {
 		return nil
 	}
-	if err := r.db.WithContext(ctx).Model(&model.Session{}).Where("id = ?", id).Updates(updates).Error; err != nil {
+	if err := r.db.WithContext(ctx).Model(&schema.Session{}).Where("id = ?", id).Updates(updates).Error; err != nil {
 		return fmt.Errorf("更新会话语义失败: %w", err)
 	}
 	return nil
 }
 
 // GetByDate 按日期查询会话
-func (r *SessionRepository) GetByDate(ctx context.Context, date string) ([]model.Session, error) {
+func (r *SessionRepository) GetByDate(ctx context.Context, date string) ([]schema.Session, error) {
 	startTime, endTime, err := DayRange(date)
 	if err != nil {
 		return nil, err
@@ -85,8 +85,8 @@ func (r *SessionRepository) GetByDate(ctx context.Context, date string) ([]model
 }
 
 // GetByTimeRange 按时间范围查询会话
-func (r *SessionRepository) GetByTimeRange(ctx context.Context, startTime, endTime int64) ([]model.Session, error) {
-	var sessions []model.Session
+func (r *SessionRepository) GetByTimeRange(ctx context.Context, startTime, endTime int64) ([]schema.Session, error) {
+	var sessions []schema.Session
 	if err := r.db.WithContext(ctx).
 		Where("start_time >= ? AND start_time <= ?", startTime, endTime).
 		Where(latestSessionVersionPerDateSQL).
@@ -101,7 +101,7 @@ func (r *SessionRepository) GetByTimeRange(ctx context.Context, startTime, endTi
 func (r *SessionRepository) GetMaxSessionVersionByDate(ctx context.Context, date string) (int, error) {
 	var max int
 	if err := r.db.WithContext(ctx).
-		Model(&model.Session{}).
+		Model(&schema.Session{}).
 		Select("COALESCE(MAX(session_version), 0)").
 		Where("date = ?", date).
 		Scan(&max).Error; err != nil {
@@ -111,8 +111,8 @@ func (r *SessionRepository) GetMaxSessionVersionByDate(ctx context.Context, date
 }
 
 // GetByID 按 ID 查询会话
-func (r *SessionRepository) GetByID(ctx context.Context, id int64) (*model.Session, error) {
-	var session model.Session
+func (r *SessionRepository) GetByID(ctx context.Context, id int64) (*schema.Session, error) {
+	var session schema.Session
 	if err := r.db.WithContext(ctx).First(&session, id).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil
@@ -123,8 +123,8 @@ func (r *SessionRepository) GetByID(ctx context.Context, id int64) (*model.Sessi
 }
 
 // GetLastSession 获取最近一次会话（按 end_time）
-func (r *SessionRepository) GetLastSession(ctx context.Context) (*model.Session, error) {
-	var session model.Session
+func (r *SessionRepository) GetLastSession(ctx context.Context) (*schema.Session, error) {
+	var session schema.Session
 	err := r.db.WithContext(ctx).
 		Where(latestSessionVersionPerDateSQL).
 		Order("end_time DESC").

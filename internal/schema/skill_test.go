@@ -1,4 +1,4 @@
-package model
+package schema
 
 import (
 	"math"
@@ -58,4 +58,3 @@ func TestSkillNodeApplyDecayBounds(t *testing.T) {
 		t.Fatalf("exp=%v, want 50", s.Exp)
 	}
 }
-

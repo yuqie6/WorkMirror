@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/yuqie6/mirror/internal/model"
+	"github.com/yuqie6/mirror/internal/schema"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -31,7 +31,7 @@ func NewSkillActivityRepository(db *gorm.DB) *SkillActivityRepository {
 	return &SkillActivityRepository{db: db}
 }
 
-func (r *SkillActivityRepository) BatchInsert(ctx context.Context, activities []model.SkillActivity) (int64, error) {
+func (r *SkillActivityRepository) BatchInsert(ctx context.Context, activities []schema.SkillActivity) (int64, error) {
 	if len(activities) == 0 {
 		return 0, nil
 	}
@@ -50,7 +50,7 @@ func (r *SkillActivityRepository) ListExistingKeys(ctx context.Context, keys []S
 		return existing, nil
 	}
 
-	q := r.db.WithContext(ctx).Model(&model.SkillActivity{}).Select("source, evidence_id, skill_key")
+	q := r.db.WithContext(ctx).Model(&schema.SkillActivity{}).Select("source, evidence_id, skill_key")
 	for i, k := range keys {
 		if i == 0 {
 			q = q.Where("(source = ? AND evidence_id = ? AND skill_key = ?)", k.Source, k.EvidenceID, k.SkillKey)

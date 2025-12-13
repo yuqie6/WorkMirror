@@ -14,8 +14,8 @@ import (
 	"github.com/yuqie6/mirror/internal/bootstrap"
 	"github.com/yuqie6/mirror/internal/dto"
 	"github.com/yuqie6/mirror/internal/eventbus"
-	"github.com/yuqie6/mirror/internal/model"
 	"github.com/yuqie6/mirror/internal/pkg/config"
+	"github.com/yuqie6/mirror/internal/schema"
 	"github.com/yuqie6/mirror/internal/service"
 )
 
@@ -274,7 +274,7 @@ func normalizePeriodWordingList(periodType string, items []string) []string {
 	return out
 }
 
-func periodSummaryToDTO(ps *model.PeriodSummary) *dto.PeriodSummaryDTO {
+func periodSummaryToDTO(ps *schema.PeriodSummary) *dto.PeriodSummaryDTO {
 	if ps == nil {
 		return nil
 	}
@@ -296,15 +296,15 @@ func savePeriodSummary(ctx context.Context, rt *bootstrap.AgentRuntime, psDTO *d
 	if rt == nil || rt.Repos.PeriodSummary == nil || psDTO == nil {
 		return
 	}
-	_ = rt.Repos.PeriodSummary.Upsert(ctx, &model.PeriodSummary{
+	_ = rt.Repos.PeriodSummary.Upsert(ctx, &schema.PeriodSummary{
 		Type:         psDTO.Type,
 		StartDate:    psDTO.StartDate,
 		EndDate:      psDTO.EndDate,
 		Overview:     psDTO.Overview,
-		Achievements: model.JSONArray(psDTO.Achievements),
+		Achievements: schema.JSONArray(psDTO.Achievements),
 		Patterns:     psDTO.Patterns,
 		Suggestions:  psDTO.Suggestions,
-		TopSkills:    model.JSONArray(psDTO.TopSkills),
+		TopSkills:    schema.JSONArray(psDTO.TopSkills),
 		TotalCoding:  psDTO.TotalCoding,
 		TotalDiffs:   psDTO.TotalDiffs,
 	})
@@ -424,8 +424,8 @@ func (a *API) HandleSkillSessions(w http.ResponseWriter, r *http.Request) {
 
 	result := make([]dto.SessionDTO, 0, len(sessions))
 	for _, s := range sessions {
-		diffIDs := model.GetInt64Slice(s.Metadata, "diff_ids")
-		browserIDs := model.GetInt64Slice(s.Metadata, "browser_event_ids")
+		diffIDs := schema.GetInt64Slice(s.Metadata, "diff_ids")
+		browserIDs := schema.GetInt64Slice(s.Metadata, "browser_event_ids")
 		timeRange := strings.TrimSpace(s.TimeRange)
 		if timeRange == "" {
 			timeRange = service.FormatTimeRangeMs(s.StartTime, s.EndTime)
@@ -671,8 +671,8 @@ func (a *API) HandleSessionsByDate(w http.ResponseWriter, r *http.Request) {
 	}
 	result := make([]dto.SessionDTO, 0, len(sessions))
 	for _, s := range sessions {
-		diffIDs := model.GetInt64Slice(s.Metadata, "diff_ids")
-		browserIDs := model.GetInt64Slice(s.Metadata, "browser_event_ids")
+		diffIDs := schema.GetInt64Slice(s.Metadata, "diff_ids")
+		browserIDs := schema.GetInt64Slice(s.Metadata, "browser_event_ids")
 		timeRange := strings.TrimSpace(s.TimeRange)
 		if timeRange == "" {
 			timeRange = service.FormatTimeRangeMs(s.StartTime, s.EndTime)
@@ -716,10 +716,10 @@ func (a *API) HandleSessionDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	diffIDs := model.GetInt64Slice(sess.Metadata, "diff_ids")
-	browserIDs := model.GetInt64Slice(sess.Metadata, "browser_event_ids")
+	diffIDs := schema.GetInt64Slice(sess.Metadata, "diff_ids")
+	browserIDs := schema.GetInt64Slice(sess.Metadata, "browser_event_ids")
 
-	var diffs []model.Diff
+	var diffs []schema.Diff
 	if len(diffIDs) > 0 {
 		diffs, _ = a.rt.Repos.Diff.GetByIDs(r.Context(), diffIDs)
 	}
@@ -737,7 +737,7 @@ func (a *API) HandleSessionDetail(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	var browserEvents []model.BrowserEvent
+	var browserEvents []schema.BrowserEvent
 	if len(browserIDs) > 0 && a.rt.Repos.Browser != nil {
 		browserEvents, _ = a.rt.Repos.Browser.GetByIDs(r.Context(), browserIDs)
 	}
@@ -780,8 +780,8 @@ func (a *API) HandleSessionDetail(w http.ResponseWriter, r *http.Request) {
 			DiffCount:      len(diffIDs),
 			BrowserCount:   len(browserIDs),
 		},
-		Tags:     model.GetStringSlice(sess.Metadata, "tags"),
-		RAGRefs:  model.GetMapSlice(sess.Metadata, "rag_refs"),
+		Tags:     schema.GetStringSlice(sess.Metadata, "tags"),
+		RAGRefs:  schema.GetMapSlice(sess.Metadata, "rag_refs"),
 		AppUsage: appUsage,
 		Diffs:    diffDTOs,
 		Browser:  browserDTOs,

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/yuqie6/mirror/internal/model"
+	"github.com/yuqie6/mirror/internal/schema"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -21,7 +21,7 @@ func NewPeriodSummaryRepository(db *gorm.DB) *PeriodSummaryRepository {
 }
 
 // Upsert 插入或更新
-func (r *PeriodSummaryRepository) Upsert(ctx context.Context, summary *model.PeriodSummary) error {
+func (r *PeriodSummaryRepository) Upsert(ctx context.Context, summary *schema.PeriodSummary) error {
 	return r.db.WithContext(ctx).Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "type"}, {Name: "start_date"}, {Name: "end_date"}},
 		UpdateAll: true,
@@ -29,8 +29,8 @@ func (r *PeriodSummaryRepository) Upsert(ctx context.Context, summary *model.Per
 }
 
 // GetByTypeAndRange 按类型和日期范围获取（带缓存时效检查）
-func (r *PeriodSummaryRepository) GetByTypeAndRange(ctx context.Context, periodType, startDate, endDate string, maxAge time.Duration) (*model.PeriodSummary, error) {
-	var summary model.PeriodSummary
+func (r *PeriodSummaryRepository) GetByTypeAndRange(ctx context.Context, periodType, startDate, endDate string, maxAge time.Duration) (*schema.PeriodSummary, error) {
+	var summary schema.PeriodSummary
 	err := r.db.WithContext(ctx).
 		Where("type = ? AND start_date = ? AND end_date = ?", periodType, startDate, endDate).
 		First(&summary).Error
@@ -50,8 +50,8 @@ func (r *PeriodSummaryRepository) GetByTypeAndRange(ctx context.Context, periodT
 }
 
 // ListByType 按类型获取历史汇总（按开始日期倒序）
-func (r *PeriodSummaryRepository) ListByType(ctx context.Context, periodType string, limit int) ([]model.PeriodSummary, error) {
-	var summaries []model.PeriodSummary
+func (r *PeriodSummaryRepository) ListByType(ctx context.Context, periodType string, limit int) ([]schema.PeriodSummary, error) {
+	var summaries []schema.PeriodSummary
 	err := r.db.WithContext(ctx).
 		Where("type = ?", periodType).
 		Order("start_date DESC").

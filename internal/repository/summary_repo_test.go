@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/yuqie6/mirror/internal/model"
+	"github.com/yuqie6/mirror/internal/schema"
 	"github.com/yuqie6/mirror/internal/testutil"
 )
 
@@ -13,7 +13,7 @@ func TestSummaryRepositoryUpsertAndGet(t *testing.T) {
 	repo := NewSummaryRepository(db)
 	ctx := context.Background()
 
-	summary := &model.DailySummary{Date: "2025-12-12", Summary: "ok"}
+	summary := &schema.DailySummary{Date: "2025-12-12", Summary: "ok"}
 	if err := repo.Upsert(ctx, summary); err != nil {
 		t.Fatalf("Upsert error: %v", err)
 	}

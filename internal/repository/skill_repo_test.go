@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/yuqie6/mirror/internal/model"
+	"github.com/yuqie6/mirror/internal/schema"
 	"github.com/yuqie6/mirror/internal/testutil"
 )
 
@@ -13,7 +13,7 @@ func TestSkillRepositoryUpsertAndGet(t *testing.T) {
 	repo := NewSkillRepository(db)
 	ctx := context.Background()
 
-	skill := model.NewSkillNode("go", "Go", "language")
+	skill := &schema.SkillNode{Key: "go", Name: "Go", Category: "language", Level: 1, ExpToNext: 100}
 	skill.Exp = 10
 
 	if err := repo.Upsert(ctx, skill); err != nil {
@@ -34,15 +34,15 @@ func TestSkillRepositoryUpsertBatchUpdatesExisting(t *testing.T) {
 	repo := NewSkillRepository(db)
 	ctx := context.Background()
 
-	skill := model.NewSkillNode("go", "Go", "language")
+	skill := &schema.SkillNode{Key: "go", Name: "Go", Category: "language", Level: 1, ExpToNext: 100}
 	if err := repo.Upsert(ctx, skill); err != nil {
 		t.Fatalf("Upsert error: %v", err)
 	}
 
-	updated := model.NewSkillNode("go", "Go", "language")
+	updated := &schema.SkillNode{Key: "go", Name: "Go", Category: "language", Level: 1, ExpToNext: 100}
 	updated.Exp = 42
-	newSkill := model.NewSkillNode("react", "React", "framework")
-	if err := repo.UpsertBatch(ctx, []*model.SkillNode{updated, newSkill}); err != nil {
+	newSkill := &schema.SkillNode{Key: "react", Name: "React", Category: "framework", Level: 1, ExpToNext: 100}
+	if err := repo.UpsertBatch(ctx, []*schema.SkillNode{updated, newSkill}); err != nil {
 		t.Fatalf("UpsertBatch error: %v", err)
 	}
 
@@ -51,4 +51,3 @@ func TestSkillRepositoryUpsertBatchUpdatesExisting(t *testing.T) {
 		t.Fatalf("exp=%v, want 42", got.Exp)
 	}
 }
-

@@ -15,7 +15,7 @@ import (
 	"time"
 
 	_ "github.com/glebarez/sqlite"
-	"github.com/yuqie6/mirror/internal/model"
+	"github.com/yuqie6/mirror/internal/schema"
 )
 
 // BrowserCollector 浏览器历史采集器
@@ -24,7 +24,7 @@ type BrowserCollector struct {
 	tempPath      string
 	pollInterval  time.Duration
 	lastVisitTime int64
-	eventChan     chan *model.BrowserEvent
+	eventChan     chan *schema.BrowserEvent
 	stopChan      chan struct{}
 	running       bool
 }
@@ -69,7 +69,7 @@ func NewBrowserCollector(cfg *BrowserCollectorConfig) (*BrowserCollector, error)
 		historyPath:  historyPath,
 		tempPath:     tempPath,
 		pollInterval: pollInterval,
-		eventChan:    make(chan *model.BrowserEvent, 256),
+		eventChan:    make(chan *schema.BrowserEvent, 256),
 		stopChan:     make(chan struct{}),
 	}, nil
 }
@@ -129,7 +129,7 @@ func (c *BrowserCollector) Stop() error {
 }
 
 // Events 返回事件通道
-func (c *BrowserCollector) Events() <-chan *model.BrowserEvent {
+func (c *BrowserCollector) Events() <-chan *schema.BrowserEvent {
 	return c.eventChan
 }
 
@@ -218,7 +218,7 @@ func (c *BrowserCollector) collectHistory() {
 		// Unix: 毫秒 from 1970-01-01
 		unixMilli := (visitTime - 11644473600000000) / 1000
 
-		event := &model.BrowserEvent{
+		event := &schema.BrowserEvent{
 			Timestamp: unixMilli,
 			URL:       urlStr,
 			Title:     title,

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/yuqie6/mirror/internal/model"
+	"github.com/yuqie6/mirror/internal/schema"
 	"gorm.io/gorm"
 )
 
@@ -20,7 +20,7 @@ func NewBrowserEventRepository(db *gorm.DB) *BrowserEventRepository {
 }
 
 // Create 创建记录
-func (r *BrowserEventRepository) Create(ctx context.Context, event *model.BrowserEvent) error {
+func (r *BrowserEventRepository) Create(ctx context.Context, event *schema.BrowserEvent) error {
 	if err := r.db.WithContext(ctx).Create(event).Error; err != nil {
 		return fmt.Errorf("创建浏览器事件失败: %w", err)
 	}
@@ -28,7 +28,7 @@ func (r *BrowserEventRepository) Create(ctx context.Context, event *model.Browse
 }
 
 // BatchInsert 批量插入
-func (r *BrowserEventRepository) BatchInsert(ctx context.Context, events []*model.BrowserEvent) error {
+func (r *BrowserEventRepository) BatchInsert(ctx context.Context, events []*schema.BrowserEvent) error {
 	if len(events) == 0 {
 		return nil
 	}
@@ -42,13 +42,13 @@ func (r *BrowserEventRepository) BatchInsert(ctx context.Context, events []*mode
 }
 
 // GetByDate 按日期查询
-func (r *BrowserEventRepository) GetByDate(ctx context.Context, date string) ([]model.BrowserEvent, error) {
+func (r *BrowserEventRepository) GetByDate(ctx context.Context, date string) ([]schema.BrowserEvent, error) {
 	startTime, endTime, err := DayRange(date)
 	if err != nil {
 		return nil, err
 	}
 
-	var events []model.BrowserEvent
+	var events []schema.BrowserEvent
 	if err := r.db.WithContext(ctx).
 		Where("timestamp >= ? AND timestamp <= ?", startTime, endTime).
 		Order("timestamp DESC").
@@ -60,8 +60,8 @@ func (r *BrowserEventRepository) GetByDate(ctx context.Context, date string) ([]
 }
 
 // GetByTimeRange 按时间范围查询浏览器事件
-func (r *BrowserEventRepository) GetByTimeRange(ctx context.Context, startTime, endTime int64) ([]model.BrowserEvent, error) {
-	var events []model.BrowserEvent
+func (r *BrowserEventRepository) GetByTimeRange(ctx context.Context, startTime, endTime int64) ([]schema.BrowserEvent, error) {
+	var events []schema.BrowserEvent
 	if err := r.db.WithContext(ctx).
 		Where("timestamp >= ? AND timestamp <= ?", startTime, endTime).
 		Order("timestamp ASC").
@@ -72,24 +72,24 @@ func (r *BrowserEventRepository) GetByTimeRange(ctx context.Context, startTime, 
 }
 
 // GetByIDs 按 ID 列表批量查询浏览器事件（保持输入顺序）
-func (r *BrowserEventRepository) GetByIDs(ctx context.Context, ids []int64) ([]model.BrowserEvent, error) {
+func (r *BrowserEventRepository) GetByIDs(ctx context.Context, ids []int64) ([]schema.BrowserEvent, error) {
 	if len(ids) == 0 {
 		return nil, nil
 	}
 
-	var events []model.BrowserEvent
+	var events []schema.BrowserEvent
 	if err := r.db.WithContext(ctx).
 		Where("id IN ?", ids).
 		Find(&events).Error; err != nil {
 		return nil, fmt.Errorf("查询浏览器事件失败: %w", err)
 	}
 
-	byID := make(map[int64]model.BrowserEvent, len(events))
+	byID := make(map[int64]schema.BrowserEvent, len(events))
 	for _, e := range events {
 		byID[e.ID] = e
 	}
 
-	ordered := make([]model.BrowserEvent, 0, len(events))
+	ordered := make([]schema.BrowserEvent, 0, len(events))
 	for _, id := range ids {
 		if e, ok := byID[id]; ok {
 			ordered = append(ordered, e)
@@ -102,7 +102,7 @@ func (r *BrowserEventRepository) GetByIDs(ctx context.Context, ids []int64) ([]m
 func (r *BrowserEventRepository) GetDomainStats(ctx context.Context, startTime, endTime int64, limit int) ([]DomainStat, error) {
 	var stats []DomainStat
 	if err := r.db.WithContext(ctx).
-		Model(&model.BrowserEvent{}).
+		Model(&schema.BrowserEvent{}).
 		Select("domain, COUNT(*) as visit_count, SUM(duration) as total_duration").
 		Where("timestamp >= ? AND timestamp <= ?", startTime, endTime).
 		Group("domain").
@@ -125,7 +125,7 @@ type DomainStat struct {
 // CountByDateRange 统计日期范围内的事件数量
 func (r *BrowserEventRepository) CountByDateRange(ctx context.Context, startTime, endTime int64) (int64, error) {
 	var count int64
-	if err := r.db.WithContext(ctx).Model(&model.BrowserEvent{}).
+	if err := r.db.WithContext(ctx).Model(&schema.BrowserEvent{}).
 		Where("timestamp >= ? AND timestamp <= ?", startTime, endTime).
 		Count(&count).Error; err != nil {
 		return 0, fmt.Errorf("统计浏览器事件失败: %w", err)

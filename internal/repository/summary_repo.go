@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/yuqie6/mirror/internal/model"
+	"github.com/yuqie6/mirror/internal/schema"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -20,7 +20,7 @@ func NewSummaryRepository(db *gorm.DB) *SummaryRepository {
 }
 
 // Upsert 插入或更新
-func (r *SummaryRepository) Upsert(ctx context.Context, summary *model.DailySummary) error {
+func (r *SummaryRepository) Upsert(ctx context.Context, summary *schema.DailySummary) error {
 	return r.db.WithContext(ctx).Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "date"}},
 		UpdateAll: true,
@@ -28,8 +28,8 @@ func (r *SummaryRepository) Upsert(ctx context.Context, summary *model.DailySumm
 }
 
 // GetByDate 按日期获取
-func (r *SummaryRepository) GetByDate(ctx context.Context, date string) (*model.DailySummary, error) {
-	var summary model.DailySummary
+func (r *SummaryRepository) GetByDate(ctx context.Context, date string) (*schema.DailySummary, error) {
+	var summary schema.DailySummary
 	err := r.db.WithContext(ctx).Where("date = ?", date).First(&summary).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -41,8 +41,8 @@ func (r *SummaryRepository) GetByDate(ctx context.Context, date string) (*model.
 }
 
 // GetRecent 获取最近的总结
-func (r *SummaryRepository) GetRecent(ctx context.Context, days int) ([]model.DailySummary, error) {
-	var summaries []model.DailySummary
+func (r *SummaryRepository) GetRecent(ctx context.Context, days int) ([]schema.DailySummary, error) {
+	var summaries []schema.DailySummary
 	err := r.db.WithContext(ctx).
 		Order("date DESC").
 		Limit(days).
@@ -54,8 +54,8 @@ func (r *SummaryRepository) GetRecent(ctx context.Context, days int) ([]model.Da
 }
 
 // GetByDateRange 获取日期范围内的总结
-func (r *SummaryRepository) GetByDateRange(ctx context.Context, startDate, endDate string) ([]model.DailySummary, error) {
-	var summaries []model.DailySummary
+func (r *SummaryRepository) GetByDateRange(ctx context.Context, startDate, endDate string) ([]schema.DailySummary, error) {
+	var summaries []schema.DailySummary
 	err := r.db.WithContext(ctx).
 		Where("date >= ? AND date <= ?", startDate, endDate).
 		Order("date DESC").
@@ -76,7 +76,7 @@ type SummaryPreview struct {
 func (r *SummaryRepository) ListSummaryPreviews(ctx context.Context, limit int) ([]SummaryPreview, error) {
 	var results []SummaryPreview
 	err := r.db.WithContext(ctx).
-		Model(&model.DailySummary{}).
+		Model(&schema.DailySummary{}).
 		Select("date, SUBSTR(summary, 1, 40) as preview").
 		Order("date DESC").
 		Limit(limit).

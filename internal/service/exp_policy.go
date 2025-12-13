@@ -3,18 +3,18 @@ package service
 import (
 	"strings"
 
-	"github.com/yuqie6/mirror/internal/model"
+	"github.com/yuqie6/mirror/internal/schema"
 )
 
 // ExpPolicy 经验计算策略（可替换）
 type ExpPolicy interface {
-	CalcDiffExp(diffs []model.Diff) float64
+	CalcDiffExp(diffs []schema.Diff) float64
 }
 
 // DefaultExpPolicy 默认经验策略：行数主导 + 低成本修正 + clamp
 type DefaultExpPolicy struct{}
 
-func (p DefaultExpPolicy) CalcDiffExp(diffs []model.Diff) float64 {
+func (p DefaultExpPolicy) CalcDiffExp(diffs []schema.Diff) float64 {
 	if len(diffs) == 0 {
 		return 1
 	}
@@ -63,4 +63,3 @@ func clamp(v, min, max float64) float64 {
 	}
 	return v
 }
-

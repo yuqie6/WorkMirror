@@ -6,18 +6,18 @@ import (
 	"time"
 
 	"github.com/yuqie6/mirror/internal/ai"
-	"github.com/yuqie6/mirror/internal/model"
+	"github.com/yuqie6/mirror/internal/schema"
 	"github.com/yuqie6/mirror/internal/repository"
 )
 
 type fakeSkillRepo struct {
-	items       map[string]*model.SkillNode
-	upserted    []*model.SkillNode
-	upsertBatch []*model.SkillNode
+	items       map[string]*schema.SkillNode
+	upserted    []*schema.SkillNode
+	upsertBatch []*schema.SkillNode
 }
 
-func newFakeSkillRepo(skills ...*model.SkillNode) *fakeSkillRepo {
-	m := make(map[string]*model.SkillNode)
+func newFakeSkillRepo(skills ...*schema.SkillNode) *fakeSkillRepo {
+	m := make(map[string]*schema.SkillNode)
 	for _, s := range skills {
 		copy := *s
 		m[s.Key] = &copy
@@ -25,27 +25,27 @@ func newFakeSkillRepo(skills ...*model.SkillNode) *fakeSkillRepo {
 	return &fakeSkillRepo{items: m}
 }
 
-func (r *fakeSkillRepo) GetAll(ctx context.Context) ([]model.SkillNode, error) {
-	out := make([]model.SkillNode, 0, len(r.items))
+func (r *fakeSkillRepo) GetAll(ctx context.Context) ([]schema.SkillNode, error) {
+	out := make([]schema.SkillNode, 0, len(r.items))
 	for _, s := range r.items {
 		out = append(out, *s)
 	}
 	return out, nil
 }
-func (r *fakeSkillRepo) GetByKey(ctx context.Context, key string) (*model.SkillNode, error) {
+func (r *fakeSkillRepo) GetByKey(ctx context.Context, key string) (*schema.SkillNode, error) {
 	if s, ok := r.items[key]; ok {
 		copy := *s
 		return &copy, nil
 	}
 	return nil, nil
 }
-func (r *fakeSkillRepo) Upsert(ctx context.Context, skill *model.SkillNode) error {
+func (r *fakeSkillRepo) Upsert(ctx context.Context, skill *schema.SkillNode) error {
 	copy := *skill
 	r.items[skill.Key] = &copy
 	r.upserted = append(r.upserted, &copy)
 	return nil
 }
-func (r *fakeSkillRepo) UpsertBatch(ctx context.Context, skills []*model.SkillNode) error {
+func (r *fakeSkillRepo) UpsertBatch(ctx context.Context, skills []*schema.SkillNode) error {
 	r.upsertBatch = append(r.upsertBatch, skills...)
 	for _, s := range skills {
 		copy := *s
@@ -53,29 +53,29 @@ func (r *fakeSkillRepo) UpsertBatch(ctx context.Context, skills []*model.SkillNo
 	}
 	return nil
 }
-func (r *fakeSkillRepo) GetTopSkills(ctx context.Context, limit int) ([]model.SkillNode, error) {
+func (r *fakeSkillRepo) GetTopSkills(ctx context.Context, limit int) ([]schema.SkillNode, error) {
 	return nil, nil
 }
-func (r *fakeSkillRepo) GetActiveSkillsInPeriod(ctx context.Context, startTime, endTime int64, limit int) ([]model.SkillNode, error) {
+func (r *fakeSkillRepo) GetActiveSkillsInPeriod(ctx context.Context, startTime, endTime int64, limit int) ([]schema.SkillNode, error) {
 	return nil, nil
 }
 
 type fakeDiffRepo struct{}
 
-func (f fakeDiffRepo) Create(ctx context.Context, diff *model.Diff) error { return nil }
-func (f fakeDiffRepo) GetPendingAIAnalysis(ctx context.Context, limit int) ([]model.Diff, error) {
+func (f fakeDiffRepo) Create(ctx context.Context, diff *schema.Diff) error { return nil }
+func (f fakeDiffRepo) GetPendingAIAnalysis(ctx context.Context, limit int) ([]schema.Diff, error) {
 	return nil, nil
 }
 func (f fakeDiffRepo) UpdateAIInsight(ctx context.Context, id int64, insight string, skills []string) error {
 	return nil
 }
-func (f fakeDiffRepo) GetByDate(ctx context.Context, date string) ([]model.Diff, error) {
+func (f fakeDiffRepo) GetByDate(ctx context.Context, date string) ([]schema.Diff, error) {
 	return nil, nil
 }
-func (f fakeDiffRepo) GetByTimeRange(ctx context.Context, startTime, endTime int64) ([]model.Diff, error) {
+func (f fakeDiffRepo) GetByTimeRange(ctx context.Context, startTime, endTime int64) ([]schema.Diff, error) {
 	return nil, nil
 }
-func (f fakeDiffRepo) GetByIDs(ctx context.Context, ids []int64) ([]model.Diff, error) {
+func (f fakeDiffRepo) GetByIDs(ctx context.Context, ids []int64) ([]schema.Diff, error) {
 	return nil, nil
 }
 func (f fakeDiffRepo) GetLanguageStats(ctx context.Context, startTime, endTime int64) ([]repository.LanguageStat, error) {
@@ -84,10 +84,10 @@ func (f fakeDiffRepo) GetLanguageStats(ctx context.Context, startTime, endTime i
 func (f fakeDiffRepo) CountByDateRange(ctx context.Context, startTime, endTime int64) (int64, error) {
 	return 0, nil
 }
-func (f fakeDiffRepo) GetRecentAnalyzed(ctx context.Context, limit int) ([]model.Diff, error) {
+func (f fakeDiffRepo) GetRecentAnalyzed(ctx context.Context, limit int) ([]schema.Diff, error) {
 	return nil, nil
 }
-func (f fakeDiffRepo) GetByID(ctx context.Context, id int64) (*model.Diff, error) {
+func (f fakeDiffRepo) GetByID(ctx context.Context, id int64) (*schema.Diff, error) {
 	return nil, nil
 }
 
@@ -110,13 +110,13 @@ func TestNormalizeKey(t *testing.T) {
 
 func TestUpdateSkillsFromDiffsWithCategory(t *testing.T) {
 	ctx := context.Background()
-	existingParent := model.NewSkillNode("go", "Go", "language")
-	existingChild := model.NewSkillNode("reactjs", "ReactJS", "other")
+	existingParent := schema.NewSkillNode("go", "Go", "language")
+	existingChild := schema.NewSkillNode("reactjs", "ReactJS", "other")
 	repo := newFakeSkillRepo(existingParent, existingChild)
 
 	svc := NewSkillService(repo, fakeDiffRepo{}, nil, DefaultExpPolicy{})
 
-	diffs := []model.Diff{
+	diffs := []schema.Diff{
 		{LinesAdded: 5, LinesDeleted: 5},
 	}
 	aiSkills := []ai.SkillWithCategory{
@@ -163,10 +163,10 @@ func TestUpdateSkillsFromDiffsWithCategory_EmptySkillsNoop(t *testing.T) {
 
 func TestApplyDecayToAll(t *testing.T) {
 	ctx := context.Background()
-	oldSkill := model.NewSkillNode("go", "Go", "language")
+	oldSkill := schema.NewSkillNode("go", "Go", "language")
 	oldSkill.Exp = 100
 	oldSkill.LastActive = time.Now().Add(-10 * 24 * time.Hour).UnixMilli()
-	recentSkill := model.NewSkillNode("react", "React", "framework")
+	recentSkill := schema.NewSkillNode("react", "React", "framework")
 	recentSkill.Exp = 50
 	recentSkill.LastActive = time.Now().Add(-2 * 24 * time.Hour).UnixMilli()
 

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/yuqie6/mirror/internal/model"
+	"github.com/yuqie6/mirror/internal/schema"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -20,8 +20,8 @@ func NewSkillRepository(db *gorm.DB) *SkillRepository {
 }
 
 // GetByKey 根据 Key 获取技能
-func (r *SkillRepository) GetByKey(ctx context.Context, key string) (*model.SkillNode, error) {
-	var skill model.SkillNode
+func (r *SkillRepository) GetByKey(ctx context.Context, key string) (*schema.SkillNode, error) {
+	var skill schema.SkillNode
 	err := r.db.WithContext(ctx).Where("key = ?", key).First(&skill).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -33,7 +33,7 @@ func (r *SkillRepository) GetByKey(ctx context.Context, key string) (*model.Skil
 }
 
 // Upsert 插入或更新技能
-func (r *SkillRepository) Upsert(ctx context.Context, skill *model.SkillNode) error {
+func (r *SkillRepository) Upsert(ctx context.Context, skill *schema.SkillNode) error {
 	return r.db.WithContext(ctx).Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "key"}},
 		UpdateAll: true,
@@ -41,8 +41,8 @@ func (r *SkillRepository) Upsert(ctx context.Context, skill *model.SkillNode) er
 }
 
 // GetAll 获取所有技能
-func (r *SkillRepository) GetAll(ctx context.Context) ([]model.SkillNode, error) {
-	var skills []model.SkillNode
+func (r *SkillRepository) GetAll(ctx context.Context) ([]schema.SkillNode, error) {
+	var skills []schema.SkillNode
 	err := r.db.WithContext(ctx).Order("level DESC, exp DESC").Find(&skills).Error
 	if err != nil {
 		return nil, fmt.Errorf("查询技能失败: %w", err)
@@ -51,8 +51,8 @@ func (r *SkillRepository) GetAll(ctx context.Context) ([]model.SkillNode, error)
 }
 
 // GetByCategory 根据分类获取技能
-func (r *SkillRepository) GetByCategory(ctx context.Context, category string) ([]model.SkillNode, error) {
-	var skills []model.SkillNode
+func (r *SkillRepository) GetByCategory(ctx context.Context, category string) ([]schema.SkillNode, error) {
+	var skills []schema.SkillNode
 	err := r.db.WithContext(ctx).
 		Where("category = ?", category).
 		Order("level DESC, exp DESC").
@@ -64,8 +64,8 @@ func (r *SkillRepository) GetByCategory(ctx context.Context, category string) ([
 }
 
 // GetTopSkills 获取排名前 N 的技能
-func (r *SkillRepository) GetTopSkills(ctx context.Context, limit int) ([]model.SkillNode, error) {
-	var skills []model.SkillNode
+func (r *SkillRepository) GetTopSkills(ctx context.Context, limit int) ([]schema.SkillNode, error) {
+	var skills []schema.SkillNode
 	err := r.db.WithContext(ctx).
 		Order("level DESC, exp DESC").
 		Limit(limit).
@@ -77,8 +77,8 @@ func (r *SkillRepository) GetTopSkills(ctx context.Context, limit int) ([]model.
 }
 
 // GetRecentlyActive 获取最近活跃的技能
-func (r *SkillRepository) GetRecentlyActive(ctx context.Context, limit int) ([]model.SkillNode, error) {
-	var skills []model.SkillNode
+func (r *SkillRepository) GetRecentlyActive(ctx context.Context, limit int) ([]schema.SkillNode, error) {
+	var skills []schema.SkillNode
 	err := r.db.WithContext(ctx).
 		Order("last_active DESC").
 		Limit(limit).
@@ -92,7 +92,7 @@ func (r *SkillRepository) GetRecentlyActive(ctx context.Context, limit int) ([]m
 // Count 统计技能数量
 func (r *SkillRepository) Count(ctx context.Context) (int64, error) {
 	var count int64
-	err := r.db.WithContext(ctx).Model(&model.SkillNode{}).Count(&count).Error
+	err := r.db.WithContext(ctx).Model(&schema.SkillNode{}).Count(&count).Error
 	if err != nil {
 		return 0, fmt.Errorf("统计技能失败: %w", err)
 	}
@@ -105,7 +105,7 @@ func (r *SkillRepository) Transaction(ctx context.Context, fn func(tx *gorm.DB) 
 }
 
 // UpsertBatch 批量插入或更新技能（在事务中）
-func (r *SkillRepository) UpsertBatch(ctx context.Context, skills []*model.SkillNode) error {
+func (r *SkillRepository) UpsertBatch(ctx context.Context, skills []*schema.SkillNode) error {
 	if len(skills) == 0 {
 		return nil
 	}
@@ -123,8 +123,8 @@ func (r *SkillRepository) UpsertBatch(ctx context.Context, skills []*model.Skill
 }
 
 // GetByParent 获取某个技能的所有子技能
-func (r *SkillRepository) GetByParent(ctx context.Context, parentKey string) ([]model.SkillNode, error) {
-	var skills []model.SkillNode
+func (r *SkillRepository) GetByParent(ctx context.Context, parentKey string) ([]schema.SkillNode, error) {
+	var skills []schema.SkillNode
 	err := r.db.WithContext(ctx).
 		Where("parent_key = ?", parentKey).
 		Order("level DESC, exp DESC").
@@ -136,8 +136,8 @@ func (r *SkillRepository) GetByParent(ctx context.Context, parentKey string) ([]
 }
 
 // GetTopLevel 获取所有顶级技能（没有父技能）
-func (r *SkillRepository) GetTopLevel(ctx context.Context) ([]model.SkillNode, error) {
-	var skills []model.SkillNode
+func (r *SkillRepository) GetTopLevel(ctx context.Context) ([]schema.SkillNode, error) {
+	var skills []schema.SkillNode
 	err := r.db.WithContext(ctx).
 		Where("parent_key = '' OR parent_key IS NULL").
 		Order("category, level DESC, exp DESC").
@@ -149,8 +149,8 @@ func (r *SkillRepository) GetTopLevel(ctx context.Context) ([]model.SkillNode, e
 }
 
 // GetActiveSkillsInPeriod 获取指定时间窗内活跃的技能（按最近活跃时间过滤）
-func (r *SkillRepository) GetActiveSkillsInPeriod(ctx context.Context, startTime, endTime int64, limit int) ([]model.SkillNode, error) {
-	var skills []model.SkillNode
+func (r *SkillRepository) GetActiveSkillsInPeriod(ctx context.Context, startTime, endTime int64, limit int) ([]schema.SkillNode, error) {
+	var skills []schema.SkillNode
 	err := r.db.WithContext(ctx).
 		Where("last_active >= ? AND last_active <= ?", startTime, endTime).
 		Order("level DESC, exp DESC").

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/yuqie6/mirror/internal/model"
+	"github.com/yuqie6/mirror/internal/schema"
 	"gorm.io/gorm"
 )
 
@@ -21,7 +21,7 @@ func NewDiffRepository(db *gorm.DB) *DiffRepository {
 }
 
 // Create 创建单个 Diff 记录
-func (r *DiffRepository) Create(ctx context.Context, diff *model.Diff) error {
+func (r *DiffRepository) Create(ctx context.Context, diff *schema.Diff) error {
 	if err := r.db.WithContext(ctx).Create(diff).Error; err != nil {
 		return fmt.Errorf("创建 Diff 记录失败: %w", err)
 	}
@@ -30,13 +30,13 @@ func (r *DiffRepository) Create(ctx context.Context, diff *model.Diff) error {
 }
 
 // GetByDate 按日期查询 Diff
-func (r *DiffRepository) GetByDate(ctx context.Context, date string) ([]model.Diff, error) {
+func (r *DiffRepository) GetByDate(ctx context.Context, date string) ([]schema.Diff, error) {
 	startTime, endTime, err := DayRange(date)
 	if err != nil {
 		return nil, err
 	}
 
-	var diffs []model.Diff
+	var diffs []schema.Diff
 	if err := r.db.WithContext(ctx).
 		Where("timestamp >= ? AND timestamp <= ?", startTime, endTime).
 		Order("timestamp ASC").
@@ -48,8 +48,8 @@ func (r *DiffRepository) GetByDate(ctx context.Context, date string) ([]model.Di
 }
 
 // GetByTimeRange 按时间范围查询 Diff
-func (r *DiffRepository) GetByTimeRange(ctx context.Context, startTime, endTime int64) ([]model.Diff, error) {
-	var diffs []model.Diff
+func (r *DiffRepository) GetByTimeRange(ctx context.Context, startTime, endTime int64) ([]schema.Diff, error) {
+	var diffs []schema.Diff
 	if err := r.db.WithContext(ctx).
 		Where("timestamp >= ? AND timestamp <= ?", startTime, endTime).
 		Order("timestamp ASC").
@@ -60,24 +60,24 @@ func (r *DiffRepository) GetByTimeRange(ctx context.Context, startTime, endTime 
 }
 
 // GetByIDs 按 ID 列表批量查询 Diff（保持输入顺序）
-func (r *DiffRepository) GetByIDs(ctx context.Context, ids []int64) ([]model.Diff, error) {
+func (r *DiffRepository) GetByIDs(ctx context.Context, ids []int64) ([]schema.Diff, error) {
 	if len(ids) == 0 {
 		return nil, nil
 	}
 
-	var diffs []model.Diff
+	var diffs []schema.Diff
 	if err := r.db.WithContext(ctx).
 		Where("id IN ?", ids).
 		Find(&diffs).Error; err != nil {
 		return nil, fmt.Errorf("查询 Diff 失败: %w", err)
 	}
 
-	byID := make(map[int64]model.Diff, len(diffs))
+	byID := make(map[int64]schema.Diff, len(diffs))
 	for _, d := range diffs {
 		byID[d.ID] = d
 	}
 
-	ordered := make([]model.Diff, 0, len(diffs))
+	ordered := make([]schema.Diff, 0, len(diffs))
 	for _, id := range ids {
 		if d, ok := byID[id]; ok {
 			ordered = append(ordered, d)
@@ -87,8 +87,8 @@ func (r *DiffRepository) GetByIDs(ctx context.Context, ids []int64) ([]model.Dif
 }
 
 // GetByFilePath 按文件路径查询
-func (r *DiffRepository) GetByFilePath(ctx context.Context, filePath string, limit int) ([]model.Diff, error) {
-	var diffs []model.Diff
+func (r *DiffRepository) GetByFilePath(ctx context.Context, filePath string, limit int) ([]schema.Diff, error) {
+	var diffs []schema.Diff
 	query := r.db.WithContext(ctx).Where("file_path = ?", filePath).Order("timestamp DESC")
 
 	if limit > 0 {
@@ -103,8 +103,8 @@ func (r *DiffRepository) GetByFilePath(ctx context.Context, filePath string, lim
 }
 
 // GetByLanguage 按语言查询
-func (r *DiffRepository) GetByLanguage(ctx context.Context, language string, startTime, endTime int64) ([]model.Diff, error) {
-	var diffs []model.Diff
+func (r *DiffRepository) GetByLanguage(ctx context.Context, language string, startTime, endTime int64) ([]schema.Diff, error) {
+	var diffs []schema.Diff
 	if err := r.db.WithContext(ctx).
 		Where("language = ? AND timestamp >= ? AND timestamp <= ?", language, startTime, endTime).
 		Order("timestamp DESC").
@@ -116,8 +116,8 @@ func (r *DiffRepository) GetByLanguage(ctx context.Context, language string, sta
 }
 
 // GetPendingAIAnalysis 获取待 AI 分析的 Diff
-func (r *DiffRepository) GetPendingAIAnalysis(ctx context.Context, limit int) ([]model.Diff, error) {
-	var diffs []model.Diff
+func (r *DiffRepository) GetPendingAIAnalysis(ctx context.Context, limit int) ([]schema.Diff, error) {
+	var diffs []schema.Diff
 	if err := r.db.WithContext(ctx).
 		Where("ai_insight = '' OR ai_insight IS NULL").
 		Order("timestamp ASC").
@@ -133,10 +133,10 @@ func (r *DiffRepository) GetPendingAIAnalysis(ctx context.Context, limit int) ([
 func (r *DiffRepository) UpdateAIInsight(ctx context.Context, id int64, insight string, skills []string) error {
 	updates := map[string]interface{}{
 		"ai_insight":      insight,
-		"skills_detected": model.JSONArray(skills),
+		"skills_detected": schema.JSONArray(skills),
 	}
 
-	if err := r.db.WithContext(ctx).Model(&model.Diff{}).
+	if err := r.db.WithContext(ctx).Model(&schema.Diff{}).
 		Where("id = ?", id).
 		Updates(updates).Error; err != nil {
 		return fmt.Errorf("更新 AI 解读失败: %w", err)
@@ -149,7 +149,7 @@ func (r *DiffRepository) UpdateAIInsight(ctx context.Context, id int64, insight 
 func (r *DiffRepository) GetLanguageStats(ctx context.Context, startTime, endTime int64) ([]LanguageStat, error) {
 	var stats []LanguageStat
 	if err := r.db.WithContext(ctx).
-		Model(&model.Diff{}).
+		Model(&schema.Diff{}).
 		Select("language, COUNT(*) as diff_count, SUM(lines_added) as lines_added, SUM(lines_deleted) as lines_deleted").
 		Where("timestamp >= ? AND timestamp <= ?", startTime, endTime).
 		Group("language").
@@ -172,7 +172,7 @@ type LanguageStat struct {
 // CountByDateRange 统计日期范围内的 Diff 数量
 func (r *DiffRepository) CountByDateRange(ctx context.Context, startTime, endTime int64) (int64, error) {
 	var count int64
-	if err := r.db.WithContext(ctx).Model(&model.Diff{}).
+	if err := r.db.WithContext(ctx).Model(&schema.Diff{}).
 		Where("timestamp >= ? AND timestamp <= ?", startTime, endTime).
 		Count(&count).Error; err != nil {
 		return 0, fmt.Errorf("统计 Diff 数量失败: %w", err)
@@ -181,8 +181,8 @@ func (r *DiffRepository) CountByDateRange(ctx context.Context, startTime, endTim
 }
 
 // GetAllAnalyzed 获取所有已分析的 Diff
-func (r *DiffRepository) GetAllAnalyzed(ctx context.Context) ([]model.Diff, error) {
-	var diffs []model.Diff
+func (r *DiffRepository) GetAllAnalyzed(ctx context.Context) ([]schema.Diff, error) {
+	var diffs []schema.Diff
 	if err := r.db.WithContext(ctx).
 		Where("ai_insight != '' AND ai_insight IS NOT NULL").
 		Find(&diffs).Error; err != nil {
@@ -192,11 +192,11 @@ func (r *DiffRepository) GetAllAnalyzed(ctx context.Context) ([]model.Diff, erro
 }
 
 // GetRecentAnalyzed 获取最近已分析的 Diff（按时间倒序）
-func (r *DiffRepository) GetRecentAnalyzed(ctx context.Context, limit int) ([]model.Diff, error) {
+func (r *DiffRepository) GetRecentAnalyzed(ctx context.Context, limit int) ([]schema.Diff, error) {
 	if limit <= 0 {
 		limit = 200
 	}
-	var diffs []model.Diff
+	var diffs []schema.Diff
 	if err := r.db.WithContext(ctx).
 		Where("ai_insight != '' AND ai_insight IS NOT NULL").
 		Order("timestamp DESC").
@@ -208,8 +208,8 @@ func (r *DiffRepository) GetRecentAnalyzed(ctx context.Context, limit int) ([]mo
 }
 
 // GetByID 根据 ID 查询 Diff
-func (r *DiffRepository) GetByID(ctx context.Context, id int64) (*model.Diff, error) {
-	var diff model.Diff
+func (r *DiffRepository) GetByID(ctx context.Context, id int64) (*schema.Diff, error) {
+	var diff schema.Diff
 	if err := r.db.WithContext(ctx).First(&diff, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil

@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/yuqie6/mirror/internal/model"
+	"github.com/yuqie6/mirror/internal/schema"
 	"github.com/yuqie6/mirror/internal/repository"
 )
 
@@ -43,7 +43,7 @@ func BackfillSkillActivitiesFromDiffs(
 
 	type pending struct {
 		key repository.SkillActivityKey
-		act model.SkillActivity
+		act schema.SkillActivity
 	}
 	pendingList := make([]pending, 0, len(diffs)*3)
 
@@ -64,14 +64,14 @@ func BackfillSkillActivitiesFromDiffs(
 			continue
 		}
 
-		baseExp := expPolicy.CalcDiffExp([]model.Diff{d})
+		baseExp := expPolicy.CalcDiffExp([]schema.Diff{d})
 		perSkillExp := baseExp / float64(len(uniqKeys))
 
 		for skillKey := range uniqKeys {
 			k := repository.SkillActivityKey{Source: "diff", EvidenceID: d.ID, SkillKey: skillKey}
 			pendingList = append(pendingList, pending{
 				key: k,
-				act: model.SkillActivity{
+				act: schema.SkillActivity{
 					SkillKey:   skillKey,
 					Source:     "diff",
 					EvidenceID: d.ID,
@@ -96,7 +96,7 @@ func BackfillSkillActivitiesFromDiffs(
 		return 0, err
 	}
 
-	activities := make([]model.SkillActivity, 0, len(pendingList))
+	activities := make([]schema.SkillActivity, 0, len(pendingList))
 	for _, p := range pendingList {
 		if _, ok := existing[p.key]; ok {
 			continue

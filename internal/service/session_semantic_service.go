@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/yuqie6/mirror/internal/ai"
-	"github.com/yuqie6/mirror/internal/model"
+	"github.com/yuqie6/mirror/internal/schema"
 )
 
 // SessionSemanticService 将低层事件/证据转为“可理解会话”（语义摘要 + 技能 + 证据链）
@@ -114,7 +114,7 @@ func (s *SessionSemanticService) EnrichSessionsForDate(ctx context.Context, date
 }
 
 // GetSessionsBySkill 返回某技能相关的会话（依赖 session.metadata.skill_keys 作为证据索引）
-func (s *SessionSemanticService) GetSessionsBySkill(ctx context.Context, skillKey string, lookback time.Duration, limit int) ([]model.Session, error) {
+func (s *SessionSemanticService) GetSessionsBySkill(ctx context.Context, skillKey string, lookback time.Duration, limit int) ([]schema.Session, error) {
 	skillKey = strings.TrimSpace(skillKey)
 	if skillKey == "" {
 		return nil, nil
@@ -133,13 +133,13 @@ func (s *SessionSemanticService) GetSessionsBySkill(ctx context.Context, skillKe
 		return nil, err
 	}
 
-	matched := make([]model.Session, 0, limit)
+	matched := make([]schema.Session, 0, limit)
 	for i := len(sessions) - 1; i >= 0; i-- { // 最近优先
 		if len(matched) >= limit {
 			break
 		}
 		sess := sessions[i]
-		keys := model.GetStringSlice(sess.Metadata, "skill_keys")
+		keys := schema.GetStringSlice(sess.Metadata, "skill_keys")
 		for _, k := range keys {
 			if k == skillKey {
 				matched = append(matched, sess)
@@ -152,7 +152,7 @@ func (s *SessionSemanticService) GetSessionsBySkill(ctx context.Context, skillKe
 	return matched, nil
 }
 
-func shouldEnrichSession(sess *model.Session) bool {
+func shouldEnrichSession(sess *schema.Session) bool {
 	if sess == nil || sess.ID == 0 {
 		return false
 	}
@@ -160,24 +160,24 @@ func shouldEnrichSession(sess *model.Session) bool {
 		return true
 	}
 	// 证据索引缺失也需要补齐（用于 skill→session 追溯）
-	if len(model.GetStringSlice(sess.Metadata, "skill_keys")) == 0 && len(sess.SkillsInvolved) == 0 {
+	if len(schema.GetStringSlice(sess.Metadata, "skill_keys")) == 0 && len(sess.SkillsInvolved) == 0 {
 		return true
 	}
 	return false
 }
 
-func (s *SessionSemanticService) enrichOne(ctx context.Context, sess *model.Session) error {
+func (s *SessionSemanticService) enrichOne(ctx context.Context, sess *schema.Session) error {
 	if sess == nil || sess.ID == 0 {
 		return fmt.Errorf("无效会话")
 	}
 
 	meta := sess.Metadata
 	if meta == nil {
-		meta = make(model.JSONMap)
+		meta = make(schema.JSONMap)
 	}
 
-	diffIDs := model.GetInt64Slice(meta, "diff_ids")
-	var diffs []model.Diff
+	diffIDs := schema.GetInt64Slice(meta, "diff_ids")
+	var diffs []schema.Diff
 	var err error
 	if len(diffIDs) > 0 {
 		diffs, err = s.diffRepo.GetByIDs(ctx, diffIDs)
@@ -193,7 +193,7 @@ func (s *SessionSemanticService) enrichOne(ctx context.Context, sess *model.Sess
 			diffIDs = append(diffIDs, d.ID)
 		}
 	}
-	model.SetInt64Slice(meta, "diff_ids", diffIDs)
+	schema.SetInt64Slice(meta, "diff_ids", diffIDs)
 
 	// 应用使用统计
 	appStats, err := s.eventRepo.GetAppStats(ctx, sess.StartTime, sess.EndTime)
@@ -203,8 +203,8 @@ func (s *SessionSemanticService) enrichOne(ctx context.Context, sess *model.Sess
 	topApps := WindowEventInfosFromAppStats(appStats, DefaultTopAppsLimit)
 
 	// 浏览事件（优先用索引 ID，否则按时间窗补全）
-	browserIDs := model.GetInt64Slice(meta, "browser_event_ids")
-	var browserEvents []model.BrowserEvent
+	browserIDs := schema.GetInt64Slice(meta, "browser_event_ids")
+	var browserEvents []schema.BrowserEvent
 	if len(browserIDs) > 0 {
 		browserEvents, err = s.browserRepo.GetByIDs(ctx, browserIDs)
 	} else {
@@ -219,7 +219,7 @@ func (s *SessionSemanticService) enrichOne(ctx context.Context, sess *model.Sess
 			browserIDs = append(browserIDs, e.ID)
 		}
 	}
-	model.SetInt64Slice(meta, "browser_event_ids", browserIDs)
+	schema.SetInt64Slice(meta, "browser_event_ids", browserIDs)
 
 	// 技能聚合：从已分析 Diff 归因（避免凭空推断）
 	skillNameToKey := make(map[string]string)
@@ -368,7 +368,7 @@ func (s *SessionSemanticService) enrichOne(ctx context.Context, sess *model.Sess
 		category = fallbackSessionCategory(diffs, browserEvents)
 	}
 
-	update := model.SessionSemanticUpdate{
+	update := schema.SessionSemanticUpdate{
 		TimeRange:      sess.TimeRange,
 		Category:       category,
 		Summary:        summary,
@@ -378,7 +378,7 @@ func (s *SessionSemanticService) enrichOne(ctx context.Context, sess *model.Sess
 	return s.sessionRepo.UpdateSemantic(ctx, sess.ID, update)
 }
 
-func fallbackSessionCategory(diffs []model.Diff, browser []model.BrowserEvent) string {
+func fallbackSessionCategory(diffs []schema.Diff, browser []schema.BrowserEvent) string {
 	hasDiff := len(diffs) > 0
 	hasBrowser := len(browser) > 0
 	switch {
@@ -393,7 +393,7 @@ func fallbackSessionCategory(diffs []model.Diff, browser []model.BrowserEvent) s
 	}
 }
 
-func fallbackSessionSummary(sess *model.Session, diffs []model.Diff, topDomains []string, skills []string) string {
+func fallbackSessionSummary(sess *schema.Session, diffs []schema.Diff, topDomains []string, skills []string) string {
 	parts := []string{}
 	if len(skills) > 0 {
 		parts = append(parts, "围绕 "+strings.Join(skills[:minInt(3, len(skills))], "、"))

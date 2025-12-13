@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yuqie6/mirror/internal/model"
+	"github.com/yuqie6/mirror/internal/schema"
 )
 
 // SessionService 基于事件流切分会话（工程规则优先）
@@ -168,7 +168,7 @@ func (s *SessionService) buildSessionsForRange(
 
 func (s *SessionService) assignSessionVersions(
 	ctx context.Context,
-	sessions []*model.Session,
+	sessions []*schema.Session,
 	versionStrategy func(date string, maxVersion int) int,
 ) error {
 	if len(sessions) == 0 || s.sessionRepo == nil {
@@ -222,14 +222,14 @@ func (s *SessionService) assignSessionVersions(
 	return nil
 }
 
-func (s *SessionService) splitSessions(events []model.Event, diffs []model.Diff, startTime, endTime int64) []*model.Session {
+func (s *SessionService) splitSessions(events []schema.Event, diffs []schema.Diff, startTime, endTime int64) []*schema.Session {
 	idleMs := int64(s.cfg.IdleGapMinutes) * 60 * 1000
 
 	// 确保按时间排序
 	sort.Slice(events, func(i, j int) bool { return events[i].Timestamp < events[j].Timestamp })
 	sort.Slice(diffs, func(i, j int) bool { return diffs[i].Timestamp < diffs[j].Timestamp })
 
-	var sessions []*model.Session
+	var sessions []*schema.Session
 
 	var currentStart int64
 	var lastActivityEnd int64
@@ -263,12 +263,12 @@ func (s *SessionService) splitSessions(events []model.Event, diffs []model.Diff,
 			}
 		}
 
-		meta := make(model.JSONMap)
+		meta := make(schema.JSONMap)
 		if len(diffIDs) > 0 {
 			meta["diff_ids"] = diffIDs
 		}
 
-		sessions = append(sessions, &model.Session{
+		sessions = append(sessions, &schema.Session{
 			Date:       formatDate(currentStart),
 			StartTime:  currentStart,
 			EndTime:    end,
@@ -359,7 +359,7 @@ func (s *SessionService) splitSessions(events []model.Event, diffs []model.Diff,
 	return filtered
 }
 
-func (s *SessionService) attachBrowserEvents(sessions []*model.Session, events []model.BrowserEvent) {
+func (s *SessionService) attachBrowserEvents(sessions []*schema.Session, events []schema.BrowserEvent) {
 	if len(sessions) == 0 || len(events) == 0 {
 		return
 	}
@@ -378,7 +378,7 @@ func (s *SessionService) attachBrowserEvents(sessions []*model.Session, events [
 			continue
 		}
 		if sess.Metadata == nil {
-			sess.Metadata = make(model.JSONMap)
+			sess.Metadata = make(schema.JSONMap)
 		}
 		raw, ok := sess.Metadata["browser_event_ids"].([]int64)
 		if !ok {

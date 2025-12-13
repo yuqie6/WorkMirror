@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/yuqie6/mirror/internal/model"
+	"github.com/yuqie6/mirror/internal/schema"
 	"gorm.io/gorm"
 )
 
@@ -21,12 +21,12 @@ func NewEventRepository(db *gorm.DB) *EventRepository {
 }
 
 // Create 创建单个事件
-func (r *EventRepository) Create(ctx context.Context, event *model.Event) error {
+func (r *EventRepository) Create(ctx context.Context, event *schema.Event) error {
 	return r.db.WithContext(ctx).Create(event).Error
 }
 
 // BatchInsert 批量插入事件（事务包裹）
-func (r *EventRepository) BatchInsert(ctx context.Context, events []model.Event) error {
+func (r *EventRepository) BatchInsert(ctx context.Context, events []schema.Event) error {
 	if len(events) == 0 {
 		return nil
 	}
@@ -46,8 +46,8 @@ func (r *EventRepository) BatchInsert(ctx context.Context, events []model.Event)
 }
 
 // GetByTimeRange 按时间范围查询事件
-func (r *EventRepository) GetByTimeRange(ctx context.Context, startTime, endTime int64) ([]model.Event, error) {
-	var events []model.Event
+func (r *EventRepository) GetByTimeRange(ctx context.Context, startTime, endTime int64) ([]schema.Event, error) {
+	var events []schema.Event
 	err := r.db.WithContext(ctx).
 		Where("timestamp >= ? AND timestamp <= ?", startTime, endTime).
 		Order("timestamp ASC").
@@ -61,7 +61,7 @@ func (r *EventRepository) GetByTimeRange(ctx context.Context, startTime, endTime
 }
 
 // GetByDate 按日期查询事件
-func (r *EventRepository) GetByDate(ctx context.Context, date string) ([]model.Event, error) {
+func (r *EventRepository) GetByDate(ctx context.Context, date string) ([]schema.Event, error) {
 	startTime, endTime, err := DayRange(date)
 	if err != nil {
 		return nil, err
@@ -70,8 +70,8 @@ func (r *EventRepository) GetByDate(ctx context.Context, date string) ([]model.E
 }
 
 // GetByAppName 按应用名查询事件
-func (r *EventRepository) GetByAppName(ctx context.Context, appName string, limit int) ([]model.Event, error) {
-	var events []model.Event
+func (r *EventRepository) GetByAppName(ctx context.Context, appName string, limit int) ([]schema.Event, error) {
+	var events []schema.Event
 	query := r.db.WithContext(ctx).Where("app_name = ?", appName).Order("timestamp DESC")
 
 	if limit > 0 {
@@ -88,7 +88,7 @@ func (r *EventRepository) GetByAppName(ctx context.Context, appName string, limi
 // Count 统计事件总数
 func (r *EventRepository) Count(ctx context.Context) (int64, error) {
 	var count int64
-	if err := r.db.WithContext(ctx).Model(&model.Event{}).Count(&count).Error; err != nil {
+	if err := r.db.WithContext(ctx).Model(&schema.Event{}).Count(&count).Error; err != nil {
 		return 0, fmt.Errorf("统计事件失败: %w", err)
 	}
 	return count, nil
@@ -98,7 +98,7 @@ func (r *EventRepository) Count(ctx context.Context) (int64, error) {
 func (r *EventRepository) GetAppStats(ctx context.Context, startTime, endTime int64) ([]AppStat, error) {
 	var stats []AppStat
 	err := r.db.WithContext(ctx).
-		Model(&model.Event{}).
+		Model(&schema.Event{}).
 		Select("app_name, SUM(duration) as total_duration, COUNT(*) as event_count").
 		Where("timestamp >= ? AND timestamp <= ?", startTime, endTime).
 		Group("app_name").
@@ -125,7 +125,7 @@ func (r *EventRepository) DeleteOldEvents(ctx context.Context, retainDays int) (
 
 	result := r.db.WithContext(ctx).
 		Where("timestamp < ?", cutoffTime).
-		Delete(&model.Event{})
+		Delete(&schema.Event{})
 
 	if result.Error != nil {
 		return 0, fmt.Errorf("删除旧事件失败: %w", result.Error)

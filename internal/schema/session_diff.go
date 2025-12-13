@@ -1,4 +1,4 @@
-package model
+package schema
 
 import "time"
 
@@ -13,4 +13,3 @@ type SessionDiff struct {
 func (SessionDiff) TableName() string {
 	return "session_diffs"
 }
-

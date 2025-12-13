@@ -6,7 +6,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/yuqie6/mirror/internal/model"
+	"github.com/yuqie6/mirror/internal/schema"
 	"github.com/yuqie6/mirror/internal/repository"
 )
 
@@ -158,7 +158,7 @@ func (s *TrendService) GetTrendReport(ctx context.Context, period TrendPeriod) (
 	}
 
 	allSkills, _ := s.skillRepo.GetAll(ctx)
-	skillByKey := make(map[string]model.SkillNode, len(allSkills))
+	skillByKey := make(map[string]schema.SkillNode, len(allSkills))
 	for _, sk := range allSkills {
 		skillByKey[sk.Key] = sk
 	}

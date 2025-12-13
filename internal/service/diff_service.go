@@ -8,7 +8,7 @@ import (
 	"sync"
 
 	"github.com/yuqie6/mirror/internal/collector"
-	"github.com/yuqie6/mirror/internal/model"
+	"github.com/yuqie6/mirror/internal/schema"
 )
 
 // DiffService Diff 处理服务
@@ -97,7 +97,7 @@ func (s *DiffService) processLoop(ctx context.Context) {
 }
 
 // handleDiff 处理单个 Diff
-func (s *DiffService) handleDiff(ctx context.Context, diff *model.Diff) {
+func (s *DiffService) handleDiff(ctx context.Context, diff *schema.Diff) {
 	// 保存到数据库
 	if err := s.diffRepo.Create(ctx, diff); err != nil {
 		slog.Error("保存 Diff 失败", "file", diff.FileName, "error", err)

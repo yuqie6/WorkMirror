@@ -10,14 +10,14 @@ import (
 	"time"
 
 	"github.com/yuqie6/mirror/internal/collector"
-	"github.com/yuqie6/mirror/internal/model"
+	"github.com/yuqie6/mirror/internal/schema"
 )
 
 // TrackerService 追踪服务 - 负责接收事件并批量写入数据库
 type TrackerService struct {
 	collector      collector.Collector
 	eventRepo      EventRepository
-	buffer         []model.Event
+	buffer         []schema.Event
 	bufferMu       sync.Mutex
 	flushBatchSize int
 	flushInterval  time.Duration
@@ -27,7 +27,7 @@ type TrackerService struct {
 	onWriteSuccess func(count int)
 
 	// 有界写入队列
-	writeChan     chan []model.Event
+	writeChan     chan []schema.Event
 	writerDone    chan struct{}
 	writeQueueCap int
 }
@@ -63,11 +63,11 @@ func NewTrackerService(
 	return &TrackerService{
 		collector:      collector,
 		eventRepo:      eventRepo,
-		buffer:         make([]model.Event, 0, cfg.FlushBatchSize),
+		buffer:         make([]schema.Event, 0, cfg.FlushBatchSize),
 		flushBatchSize: cfg.FlushBatchSize,
 		flushInterval:  time.Duration(cfg.FlushIntervalSec) * time.Second,
 		stopChan:       make(chan struct{}),
-		writeChan:      make(chan []model.Event, writeQueueCap),
+		writeChan:      make(chan []schema.Event, writeQueueCap),
 		writerDone:     make(chan struct{}),
 		writeQueueCap:  writeQueueCap,
 		onWriteSuccess: cfg.OnWriteSuccess,
@@ -185,7 +185,7 @@ func (t *TrackerService) processLoop(ctx context.Context) {
 }
 
 // handleEvent 处理单个事件
-func (t *TrackerService) handleEvent(event *model.Event) {
+func (t *TrackerService) handleEvent(event *schema.Event) {
 	t.bufferMu.Lock()
 	defer t.bufferMu.Unlock()
 
@@ -211,7 +211,7 @@ func (t *TrackerService) flushLockedToWriter() {
 	}
 
 	// 复制缓冲区
-	events := make([]model.Event, len(t.buffer))
+	events := make([]schema.Event, len(t.buffer))
 	copy(events, t.buffer)
 
 	// 清空缓冲区

@@ -5,27 +5,27 @@ import (
 	"testing"
 	"time"
 
-	"github.com/yuqie6/mirror/internal/model"
+	"github.com/yuqie6/mirror/internal/schema"
 	"github.com/yuqie6/mirror/internal/repository"
 )
 
 type fakeDiffRepoForTrend struct {
 	langStats []repository.LanguageStat
-	diffs     []model.Diff
+	diffs     []schema.Diff
 }
 
-func (f fakeDiffRepoForTrend) Create(ctx context.Context, diff *model.Diff) error { return nil }
-func (f fakeDiffRepoForTrend) GetPendingAIAnalysis(ctx context.Context, limit int) ([]model.Diff, error) {
+func (f fakeDiffRepoForTrend) Create(ctx context.Context, diff *schema.Diff) error { return nil }
+func (f fakeDiffRepoForTrend) GetPendingAIAnalysis(ctx context.Context, limit int) ([]schema.Diff, error) {
 	return nil, nil
 }
 func (f fakeDiffRepoForTrend) UpdateAIInsight(ctx context.Context, id int64, insight string, skills []string) error {
 	return nil
 }
-func (f fakeDiffRepoForTrend) GetByDate(ctx context.Context, date string) ([]model.Diff, error) {
+func (f fakeDiffRepoForTrend) GetByDate(ctx context.Context, date string) ([]schema.Diff, error) {
 	return nil, nil
 }
-func (f fakeDiffRepoForTrend) GetByTimeRange(ctx context.Context, startTime, endTime int64) ([]model.Diff, error) {
-	out := make([]model.Diff, 0)
+func (f fakeDiffRepoForTrend) GetByTimeRange(ctx context.Context, startTime, endTime int64) ([]schema.Diff, error) {
+	out := make([]schema.Diff, 0)
 	for _, d := range f.diffs {
 		if d.Timestamp >= startTime && d.Timestamp <= endTime {
 			out = append(out, d)
@@ -33,7 +33,7 @@ func (f fakeDiffRepoForTrend) GetByTimeRange(ctx context.Context, startTime, end
 	}
 	return out, nil
 }
-func (f fakeDiffRepoForTrend) GetByIDs(ctx context.Context, ids []int64) ([]model.Diff, error) {
+func (f fakeDiffRepoForTrend) GetByIDs(ctx context.Context, ids []int64) ([]schema.Diff, error) {
 	return nil, nil
 }
 func (f fakeDiffRepoForTrend) GetLanguageStats(ctx context.Context, startTime, endTime int64) ([]repository.LanguageStat, error) {
@@ -42,39 +42,39 @@ func (f fakeDiffRepoForTrend) GetLanguageStats(ctx context.Context, startTime, e
 func (f fakeDiffRepoForTrend) CountByDateRange(ctx context.Context, startTime, endTime int64) (int64, error) {
 	return 0, nil
 }
-func (f fakeDiffRepoForTrend) GetRecentAnalyzed(ctx context.Context, limit int) ([]model.Diff, error) {
+func (f fakeDiffRepoForTrend) GetRecentAnalyzed(ctx context.Context, limit int) ([]schema.Diff, error) {
 	return nil, nil
 }
-func (f fakeDiffRepoForTrend) GetByID(ctx context.Context, id int64) (*model.Diff, error) {
+func (f fakeDiffRepoForTrend) GetByID(ctx context.Context, id int64) (*schema.Diff, error) {
 	return nil, nil
 }
 
 type fakeSkillRepoForTrend struct {
-	all []model.SkillNode
+	all []schema.SkillNode
 }
 
-func (f fakeSkillRepoForTrend) GetAll(ctx context.Context) ([]model.SkillNode, error) {
+func (f fakeSkillRepoForTrend) GetAll(ctx context.Context) ([]schema.SkillNode, error) {
 	return f.all, nil
 }
-func (f fakeSkillRepoForTrend) GetByKey(ctx context.Context, key string) (*model.SkillNode, error) {
+func (f fakeSkillRepoForTrend) GetByKey(ctx context.Context, key string) (*schema.SkillNode, error) {
 	return nil, nil
 }
-func (f fakeSkillRepoForTrend) Upsert(ctx context.Context, skill *model.SkillNode) error { return nil }
-func (f fakeSkillRepoForTrend) UpsertBatch(ctx context.Context, skills []*model.SkillNode) error {
+func (f fakeSkillRepoForTrend) Upsert(ctx context.Context, skill *schema.SkillNode) error { return nil }
+func (f fakeSkillRepoForTrend) UpsertBatch(ctx context.Context, skills []*schema.SkillNode) error {
 	return nil
 }
-func (f fakeSkillRepoForTrend) GetTopSkills(ctx context.Context, limit int) ([]model.SkillNode, error) {
+func (f fakeSkillRepoForTrend) GetTopSkills(ctx context.Context, limit int) ([]schema.SkillNode, error) {
 	return nil, nil
 }
-func (f fakeSkillRepoForTrend) GetActiveSkillsInPeriod(ctx context.Context, startTime, endTime int64, limit int) ([]model.SkillNode, error) {
+func (f fakeSkillRepoForTrend) GetActiveSkillsInPeriod(ctx context.Context, startTime, endTime int64, limit int) ([]schema.SkillNode, error) {
 	return nil, nil
 }
 
 type fakeSkillActivityRepoForTrend struct {
-	activities []model.SkillActivity
+	activities []schema.SkillActivity
 }
 
-func (f fakeSkillActivityRepoForTrend) BatchInsert(ctx context.Context, activities []model.SkillActivity) (int64, error) {
+func (f fakeSkillActivityRepoForTrend) BatchInsert(ctx context.Context, activities []schema.SkillActivity) (int64, error) {
 	return int64(len(activities)), nil
 }
 func (f fakeSkillActivityRepoForTrend) ListExistingKeys(ctx context.Context, keys []repository.SkillActivityKey) (map[repository.SkillActivityKey]struct{}, error) {
@@ -123,13 +123,13 @@ type fakeEventRepoForTrend struct {
 	stats []repository.AppStat
 }
 
-func (f fakeEventRepoForTrend) BatchInsert(ctx context.Context, events []model.Event) error {
+func (f fakeEventRepoForTrend) BatchInsert(ctx context.Context, events []schema.Event) error {
 	return nil
 }
-func (f fakeEventRepoForTrend) GetByTimeRange(ctx context.Context, startTime, endTime int64) ([]model.Event, error) {
+func (f fakeEventRepoForTrend) GetByTimeRange(ctx context.Context, startTime, endTime int64) ([]schema.Event, error) {
 	return nil, nil
 }
-func (f fakeEventRepoForTrend) GetByDate(ctx context.Context, date string) ([]model.Event, error) {
+func (f fakeEventRepoForTrend) GetByDate(ctx context.Context, date string) ([]schema.Event, error) {
 	return nil, nil
 }
 func (f fakeEventRepoForTrend) GetAppStats(ctx context.Context, startTime, endTime int64) ([]repository.AppStat, error) {
@@ -146,7 +146,7 @@ func TestGetTrendReport(t *testing.T) {
 		{Language: "ts", DiffCount: 1, LinesAdded: 3, LinesDeleted: 0},
 	}
 
-	allSkills := []model.SkillNode{
+	allSkills := []schema.SkillNode{
 		{Key: "go", Name: "Go", Category: "language", LastActive: now.UnixMilli()},
 		{Key: "react", Name: "React", Category: "framework", LastActive: now.Add(-9 * 24 * time.Hour).UnixMilli()},
 	}
@@ -156,7 +156,7 @@ func TestGetTrendReport(t *testing.T) {
 		{AppName: "chrome.exe", TotalDuration: 7200},
 	}
 
-	activities := []model.SkillActivity{
+	activities := []schema.SkillActivity{
 		{SkillKey: "go", Source: "diff", EvidenceID: 1, Exp: 10, Timestamp: now.Add(-24 * time.Hour).UnixMilli()},
 		// react 在上期活跃，本期不活跃 -> declining
 		{SkillKey: "react", Source: "diff", EvidenceID: 2, Exp: 5, Timestamp: now.Add(-10 * 24 * time.Hour).UnixMilli()},

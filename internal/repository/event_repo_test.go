@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/yuqie6/mirror/internal/model"
+	"github.com/yuqie6/mirror/internal/schema"
 	"github.com/yuqie6/mirror/internal/testutil"
 )
 
@@ -15,7 +15,7 @@ func TestEventRepositoryBatchInsertAndStats(t *testing.T) {
 	ctx := context.Background()
 
 	now := time.Now()
-	events := []model.Event{
+	events := []schema.Event{
 		{AppName: "code.exe", Duration: 120, Timestamp: now.UnixMilli()},
 		{AppName: "code.exe", Duration: 240, Timestamp: now.UnixMilli()},
 		{AppName: "chrome.exe", Duration: 600, Timestamp: now.UnixMilli()},
@@ -35,9 +35,9 @@ func TestEventRepositoryDeleteOldEvents(t *testing.T) {
 	repo := NewEventRepository(db)
 	ctx := context.Background()
 
-	old := model.Event{AppName: "code.exe", Duration: 10, Timestamp: time.Now().Add(-10 * 24 * time.Hour).UnixMilli()}
-	newer := model.Event{AppName: "code.exe", Duration: 10, Timestamp: time.Now().Add(-1 * 24 * time.Hour).UnixMilli()}
-	_ = repo.BatchInsert(ctx, []model.Event{old, newer})
+	old := schema.Event{AppName: "code.exe", Duration: 10, Timestamp: time.Now().Add(-10 * 24 * time.Hour).UnixMilli()}
+	newer := schema.Event{AppName: "code.exe", Duration: 10, Timestamp: time.Now().Add(-1 * 24 * time.Hour).UnixMilli()}
+	_ = repo.BatchInsert(ctx, []schema.Event{old, newer})
 
 	deleted, err := repo.DeleteOldEvents(ctx, 7)
 	if err != nil {
@@ -47,4 +47,3 @@ func TestEventRepositoryDeleteOldEvents(t *testing.T) {
 		t.Fatalf("deleted=%d, want 1", deleted)
 	}
 }
-

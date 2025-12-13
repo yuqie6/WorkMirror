@@ -8,14 +8,14 @@ import (
 	"sync"
 
 	"github.com/yuqie6/mirror/internal/collector"
-	"github.com/yuqie6/mirror/internal/model"
+	"github.com/yuqie6/mirror/internal/schema"
 )
 
 // BrowserService 浏览器采集服务
 type BrowserService struct {
 	collector   *collector.BrowserCollector
 	browserRepo BrowserEventRepository
-	buffer      []*model.BrowserEvent
+	buffer      []*schema.BrowserEvent
 	bufferSize  int
 	mu          sync.Mutex
 	stopChan    chan struct{}
@@ -32,7 +32,7 @@ func NewBrowserService(
 	return &BrowserService{
 		collector:   collector,
 		browserRepo: browserRepo,
-		buffer:      make([]*model.BrowserEvent, 0, 100),
+		buffer:      make([]*schema.BrowserEvent, 0, 100),
 		bufferSize:  50,
 		stopChan:    make(chan struct{}),
 	}
@@ -103,7 +103,7 @@ func (s *BrowserService) processLoop(ctx context.Context) {
 }
 
 // handleEvent 处理事件
-func (s *BrowserService) handleEvent(ctx context.Context, event *model.BrowserEvent) {
+func (s *BrowserService) handleEvent(ctx context.Context, event *schema.BrowserEvent) {
 	s.mu.Lock()
 	s.buffer = append(s.buffer, event)
 	shouldFlush := len(s.buffer) >= s.bufferSize
@@ -123,7 +123,7 @@ func (s *BrowserService) flush(ctx context.Context) {
 	}
 
 	events := s.buffer
-	s.buffer = make([]*model.BrowserEvent, 0, 100)
+	s.buffer = make([]*schema.BrowserEvent, 0, 100)
 	s.mu.Unlock()
 
 	if err := s.browserRepo.BatchInsert(ctx, events); err != nil {

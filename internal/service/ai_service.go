@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/yuqie6/mirror/internal/ai"
-	"github.com/yuqie6/mirror/internal/model"
+	"github.com/yuqie6/mirror/internal/schema"
 )
 
 // AIService AI 分析服务
@@ -72,7 +72,7 @@ func (s *AIService) AnalyzePendingDiffs(ctx context.Context, limit int) (int, er
 	defer limiter.Stop()
 
 	// 任务通道
-	tasks := make(chan model.Diff, len(diffs))
+	tasks := make(chan schema.Diff, len(diffs))
 	for _, diff := range diffs {
 		tasks <- diff
 	}
@@ -111,8 +111,8 @@ func (s *AIService) AnalyzePendingDiffs(ctx context.Context, limit int) (int, er
 
 				// 更新技能树
 				diff.AIInsight = insight.Insight
-				diff.SkillsDetected = model.JSONArray(skillNames)
-				if err := s.skillService.UpdateSkillsFromDiffsWithCategory(ctx, []model.Diff{diff}, insight.Skills); err != nil {
+				diff.SkillsDetected = schema.JSONArray(skillNames)
+				if err := s.skillService.UpdateSkillsFromDiffsWithCategory(ctx, []schema.Diff{diff}, insight.Skills); err != nil {
 					slog.Warn("更新技能失败", "file", diff.FileName, "error", err)
 				}
 
@@ -166,7 +166,7 @@ func (s *AIService) getSkillInfoList(ctx context.Context) []ai.SkillInfo {
 }
 
 // GenerateDailySummary 生成每日总结
-func (s *AIService) GenerateDailySummary(ctx context.Context, date string) (*model.DailySummary, error) {
+func (s *AIService) GenerateDailySummary(ctx context.Context, date string) (*schema.DailySummary, error) {
 	// 尝试获取缓存
 	cached, err := s.summaryRepo.GetByDate(ctx, date)
 	if err != nil {
@@ -262,12 +262,12 @@ func (s *AIService) GenerateDailySummary(ctx context.Context, date string) (*mod
 	}
 
 	// 保存到数据库
-	summary := &model.DailySummary{
+	summary := &schema.DailySummary{
 		Date:         date,
 		Summary:      result.Summary,
 		Highlights:   result.Highlights,
 		Struggles:    result.Struggles,
-		SkillsGained: model.JSONArray(result.SkillsGained),
+		SkillsGained: schema.JSONArray(result.SkillsGained),
 		TotalDiffs:   len(diffs),
 	}
 
@@ -298,7 +298,7 @@ func (s *AIService) GenerateWeeklySummary(ctx context.Context, req *ai.WeeklySum
 }
 
 // GeneratePeriodSummary 生成阶段汇总（周/月）
-func (s *AIService) GeneratePeriodSummary(ctx context.Context, periodType, startDate, endDate string, summaries []model.DailySummary) (*ai.WeeklySummaryResult, error) {
+func (s *AIService) GeneratePeriodSummary(ctx context.Context, periodType, startDate, endDate string, summaries []schema.DailySummary) (*ai.WeeklySummaryResult, error) {
 	req := &ai.WeeklySummaryRequest{
 		PeriodType: periodType,
 		StartDate:  startDate,

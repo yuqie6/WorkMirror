@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/glebarez/sqlite" // 纯 Go SQLite 驱动
-	"github.com/yuqie6/mirror/internal/model"
+	"github.com/yuqie6/mirror/internal/schema"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
@@ -70,15 +70,15 @@ func configureDB(db *gorm.DB) error {
 // autoMigrate 自动迁移表结构
 func autoMigrate(db *gorm.DB) error {
 	return db.AutoMigrate(
-		&model.Event{},
-		&model.Session{},
-		&model.SessionDiff{},
-		&model.SkillNode{},
-		&model.SkillActivity{},
-		&model.Diff{},
-		&model.DailySummary{},
-		&model.PeriodSummary{},
-		&model.BrowserEvent{},
+		&schema.Event{},
+		&schema.Session{},
+		&schema.SessionDiff{},
+		&schema.SkillNode{},
+		&schema.SkillActivity{},
+		&schema.Diff{},
+		&schema.DailySummary{},
+		&schema.PeriodSummary{},
+		&schema.BrowserEvent{},
 	)
 }
 

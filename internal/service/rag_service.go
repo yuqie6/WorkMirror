@@ -8,10 +8,10 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/yuqie6/mirror/internal/ai"
-	"github.com/yuqie6/mirror/internal/model"
-	"github.com/yuqie6/mirror/internal/repository"
 	chromem "github.com/philippgille/chromem-go"
+	"github.com/yuqie6/mirror/internal/ai"
+	"github.com/yuqie6/mirror/internal/repository"
+	"github.com/yuqie6/mirror/internal/schema"
 )
 
 // RAGService RAG 长期记忆服务
@@ -72,7 +72,7 @@ func NewRAGService(
 }
 
 // IndexDailySummary 索引每日总结
-func (s *RAGService) IndexDailySummary(ctx context.Context, summary *model.DailySummary) error {
+func (s *RAGService) IndexDailySummary(ctx context.Context, summary *schema.DailySummary) error {
 	if !s.sfClient.IsConfigured() {
 		slog.Debug("SiliconFlow 未配置，跳过索引")
 		return nil
@@ -112,7 +112,7 @@ func (s *RAGService) IndexDailySummary(ctx context.Context, summary *model.Daily
 }
 
 // IndexDiff 索引代码变更
-func (s *RAGService) IndexDiff(ctx context.Context, diff *model.Diff) error {
+func (s *RAGService) IndexDiff(ctx context.Context, diff *schema.Diff) error {
 	if !s.sfClient.IsConfigured() {
 		return nil
 	}

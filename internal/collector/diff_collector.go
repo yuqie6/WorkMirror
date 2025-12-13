@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/yuqie6/mirror/internal/model"
+	"github.com/yuqie6/mirror/internal/schema"
 )
 
 // DiffCollector 文件 Diff 采集器
@@ -22,7 +22,7 @@ type DiffCollector struct {
 	watcher     *fsnotify.Watcher
 	watchPaths  []string
 	extensions  map[string]bool
-	eventChan   chan *model.Diff
+	eventChan   chan *schema.Diff
 	stopChan    chan struct{}
 	running     bool
 	mu          sync.Mutex
@@ -70,7 +70,7 @@ func NewDiffCollector(cfg *DiffCollectorConfig) (*DiffCollector, error) {
 		watcher:     watcher,
 		watchPaths:  cfg.WatchPaths,
 		extensions:  extMap,
-		eventChan:   make(chan *model.Diff, cfg.BufferSize),
+		eventChan:   make(chan *schema.Diff, cfg.BufferSize),
 		stopChan:    make(chan struct{}),
 		debounceMap: make(map[string]time.Time),
 		debounceDur: time.Duration(cfg.DebounceSec) * time.Second,
@@ -153,7 +153,7 @@ func (c *DiffCollector) Stop() error {
 }
 
 // Events 返回事件通道
-func (c *DiffCollector) Events() <-chan *model.Diff {
+func (c *DiffCollector) Events() <-chan *schema.Diff {
 	return c.eventChan
 }
 
@@ -231,7 +231,7 @@ func (c *DiffCollector) handleFsEvent(ctx context.Context, event fsnotify.Event)
 }
 
 // captureDiff 捕获文件 Diff
-func (c *DiffCollector) captureDiff(ctx context.Context, filePath string) (*model.Diff, error) {
+func (c *DiffCollector) captureDiff(ctx context.Context, filePath string) (*schema.Diff, error) {
 	// 检查是否在 Git 仓库中
 	projectPath, isGit := c.findGitRoot(filePath)
 
@@ -258,9 +258,9 @@ func (c *DiffCollector) captureDiff(ctx context.Context, filePath string) (*mode
 	}
 
 	ext := strings.ToLower(filepath.Ext(filePath))
-	language := model.GetLanguageFromExt(ext)
+	language := schema.GetLanguageFromExt(ext)
 
-	return &model.Diff{
+	return &schema.Diff{
 		Timestamp:    time.Now().UnixMilli(),
 		FilePath:     filePath,
 		FileName:     filepath.Base(filePath),

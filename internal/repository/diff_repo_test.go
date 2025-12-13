@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/yuqie6/mirror/internal/model"
+	"github.com/yuqie6/mirror/internal/schema"
 	"github.com/yuqie6/mirror/internal/testutil"
 )
 
@@ -18,8 +18,8 @@ func TestDiffRepositoryQueries(t *testing.T) {
 	today := now.Format("2006-01-02")
 	startOfDay, _ := time.ParseInLocation("2006-01-02", today, time.Local)
 
-	d1 := &model.Diff{FileName: "a.go", FilePath: "a.go", Language: "go", Timestamp: startOfDay.Add(1 * time.Hour).UnixMilli(), LinesAdded: 3}
-	d2 := &model.Diff{FileName: "b.ts", FilePath: "b.ts", Language: "ts", Timestamp: startOfDay.Add(2 * time.Hour).UnixMilli(), LinesDeleted: 1, AIInsight: "done"}
+	d1 := &schema.Diff{FileName: "a.go", FilePath: "a.go", Language: "go", Timestamp: startOfDay.Add(1 * time.Hour).UnixMilli(), LinesAdded: 3}
+	d2 := &schema.Diff{FileName: "b.ts", FilePath: "b.ts", Language: "ts", Timestamp: startOfDay.Add(2 * time.Hour).UnixMilli(), LinesDeleted: 1, AIInsight: "done"}
 	if err := repo.Create(ctx, d1); err != nil {
 		t.Fatalf("Create d1: %v", err)
 	}
@@ -48,7 +48,7 @@ func TestDiffRepository_UpdateAIInsight(t *testing.T) {
 	repo := NewDiffRepository(db)
 	ctx := context.Background()
 
-	d := &model.Diff{
+	d := &schema.Diff{
 		FileName:  "update_test.go",
 		FilePath:  "/src/update_test.go",
 		Language:  "go",
@@ -66,7 +66,7 @@ func TestDiffRepository_UpdateAIInsight(t *testing.T) {
 	}
 
 	// Verify
-	var updated model.Diff
+	var updated schema.Diff
 	if err := db.First(&updated, d.ID).Error; err != nil {
 		t.Fatalf("Refetch failed: %v", err)
 	}
@@ -78,7 +78,7 @@ func TestDiffRepository_UpdateAIInsight(t *testing.T) {
 	// Verify skills (assuming simple JSON serialization)
 	// You might need a more robust check depending on how JSONArray is implemented/scanned
 	// For now, checking if it's not empty is a basic check, or parsing it if necessary.
-	// Given model.JSONArray, we expect it to be handled by GORM.
+	// Given schema.JSONArray, we expect it to be handled by GORM.
 	// A strictly correct test might decode it, but here we can at least check raw string or length if accessible.
 	// Since we can't easily access the implementation details of JSONArray scan here without importing,
 	// we will trust GORM's behavior or check if functionality works conceptually.
@@ -95,7 +95,7 @@ func TestDiffRepository_GetByFilePath(t *testing.T) {
 	path := "/src/common.go"
 	// Create 3 records
 	for i := 0; i < 3; i++ {
-		d := &model.Diff{
+		d := &schema.Diff{
 			FileName:  "common.go",
 			FilePath:  path,
 			Language:  "go",
@@ -131,11 +131,11 @@ func TestDiffRepository_CountByDateRange(t *testing.T) {
 	end := now.Add(1 * time.Hour).UnixMilli()
 
 	// In range
-	repo.Create(ctx, &model.Diff{Timestamp: now.UnixMilli()})
+	repo.Create(ctx, &schema.Diff{Timestamp: now.UnixMilli()})
 	// Out of range (before)
-	repo.Create(ctx, &model.Diff{Timestamp: now.Add(-2 * time.Hour).UnixMilli()})
+	repo.Create(ctx, &schema.Diff{Timestamp: now.Add(-2 * time.Hour).UnixMilli()})
 	// Out of range (after)
-	repo.Create(ctx, &model.Diff{Timestamp: now.Add(2 * time.Hour).UnixMilli()})
+	repo.Create(ctx, &schema.Diff{Timestamp: now.Add(2 * time.Hour).UnixMilli()})
 
 	count, err := repo.CountByDateRange(ctx, start, end)
 	if err != nil {
@@ -153,9 +153,9 @@ func TestDiffRepository_GetAllAnalyzed(t *testing.T) {
 	ctx := context.Background()
 
 	// Not analyzed
-	repo.Create(ctx, &model.Diff{AIInsight: ""})
+	repo.Create(ctx, &schema.Diff{AIInsight: ""})
 	// Analyzed
-	repo.Create(ctx, &model.Diff{AIInsight: "Some insight"})
+	repo.Create(ctx, &schema.Diff{AIInsight: "Some insight"})
 
 	diffs, err := repo.GetAllAnalyzed(ctx)
 	if err != nil {

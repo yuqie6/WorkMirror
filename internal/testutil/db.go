@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/glebarez/sqlite"
-	"github.com/yuqie6/mirror/internal/model"
+	"github.com/yuqie6/mirror/internal/schema"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
@@ -21,16 +21,15 @@ func OpenTestDB(t *testing.T) *gorm.DB {
 	}
 
 	if err := db.AutoMigrate(
-		&model.Event{},
-		&model.Session{},
-		&model.SkillNode{},
-		&model.Diff{},
-		&model.DailySummary{},
-		&model.BrowserEvent{},
+		&schema.Event{},
+		&schema.Session{},
+		&schema.SkillNode{},
+		&schema.Diff{},
+		&schema.DailySummary{},
+		&schema.BrowserEvent{},
 	); err != nil {
 		t.Fatalf("migrate test db: %v", err)
 	}
 
 	return db
 }
-

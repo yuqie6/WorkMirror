@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/yuqie6/mirror/internal/model"
+	"github.com/yuqie6/mirror/internal/schema"
 )
 
 // Collector 采集器接口
@@ -18,7 +18,7 @@ type Collector interface {
 	// Stop 停止采集
 	Stop() error
 	// Events 返回事件通道
-	Events() <-chan *model.Event
+	Events() <-chan *schema.Event
 }
 
 // WindowCollector Windows 窗口采集器
@@ -26,7 +26,7 @@ type WindowCollector struct {
 	pollInterval time.Duration // 轮询间隔
 	minDuration  time.Duration // 最小记录时长
 	maxDuration  time.Duration // 单段最大时长（用于持续窗口的心跳落库）
-	eventChan    chan *model.Event
+	eventChan    chan *schema.Event
 	stopChan     chan struct{}
 	lastWindow   *WindowInfo
 	lastSwitchAt time.Time
@@ -67,7 +67,7 @@ func NewWindowCollector(cfg *CollectorConfig) *WindowCollector {
 		pollInterval: time.Duration(cfg.PollIntervalMs) * time.Millisecond,
 		minDuration:  time.Duration(cfg.MinDurationSec) * time.Second,
 		maxDuration:  time.Duration(cfg.MaxDurationSec) * time.Second,
-		eventChan:    make(chan *model.Event, cfg.BufferSize),
+		eventChan:    make(chan *schema.Event, cfg.BufferSize),
 		stopChan:     make(chan struct{}),
 	}
 }
@@ -111,7 +111,7 @@ func (c *WindowCollector) Stop() error {
 }
 
 // Events 返回事件通道
-func (c *WindowCollector) Events() <-chan *model.Event {
+func (c *WindowCollector) Events() <-chan *schema.Event {
 	return c.eventChan
 }
 
@@ -189,13 +189,13 @@ func (c *WindowCollector) poll() {
 
 // emitEvent 发送事件
 func (c *WindowCollector) emitEvent(w *WindowInfo, duration time.Duration) {
-	event := &model.Event{
+	event := &schema.Event{
 		Timestamp: c.currentStart.UnixMilli(),
 		Source:    "window",
 		AppName:   w.AppName,
 		Title:     w.Title,
 		Duration:  int(duration.Seconds()),
-		Metadata:  make(model.JSONMap),
+		Metadata:  make(schema.JSONMap),
 	}
 
 	// 添加元数据

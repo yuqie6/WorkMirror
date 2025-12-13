@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/yuqie6/mirror/internal/model"
+	"github.com/yuqie6/mirror/internal/schema"
 	"gorm.io/gorm"
 )
 
@@ -22,12 +22,12 @@ func (r *SessionDiffRepository) BatchInsert(ctx context.Context, sessionID int64
 	if sessionID == 0 || len(diffIDs) == 0 {
 		return nil
 	}
-	records := make([]model.SessionDiff, 0, len(diffIDs))
+	records := make([]schema.SessionDiff, 0, len(diffIDs))
 	for _, id := range diffIDs {
 		if id == 0 {
 			continue
 		}
-		records = append(records, model.SessionDiff{SessionID: sessionID, DiffID: id})
+		records = append(records, schema.SessionDiff{SessionID: sessionID, DiffID: id})
 	}
 	if len(records) == 0 {
 		return nil
@@ -42,11 +42,10 @@ func (r *SessionDiffRepository) BatchInsert(ctx context.Context, sessionID int64
 func (r *SessionDiffRepository) GetSessionIDsByDiffID(ctx context.Context, diffID int64) ([]int64, error) {
 	var ids []int64
 	if err := r.db.WithContext(ctx).
-		Model(&model.SessionDiff{}).
+		Model(&schema.SessionDiff{}).
 		Where("diff_id = ?", diffID).
 		Pluck("session_id", &ids).Error; err != nil {
 		return nil, fmt.Errorf("查询会话关联失败: %w", err)
 	}
 	return ids, nil
 }
-

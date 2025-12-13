@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/yuqie6/mirror/internal/ai"
-	"github.com/yuqie6/mirror/internal/model"
 	"github.com/yuqie6/mirror/internal/repository"
+	"github.com/yuqie6/mirror/internal/schema"
 )
 
 // SkillService 技能服务
@@ -33,7 +33,7 @@ func NewSkillService(skillRepo SkillRepository, diffRepo DiffRepository, activit
 }
 
 // GetAllSkills 获取所有技能
-func (s *SkillService) GetAllSkills(ctx context.Context) ([]model.SkillNode, error) {
+func (s *SkillService) GetAllSkills(ctx context.Context) ([]schema.SkillNode, error) {
 	return s.skillRepo.GetAll(ctx)
 }
 
@@ -80,7 +80,7 @@ func (s *SkillService) ApplyContributions(ctx context.Context, contributions []S
 		}
 	}
 
-	skillsToUpdate := make([]*model.SkillNode, 0, len(aggMap))
+	skillsToUpdate := make([]*schema.SkillNode, 0, len(aggMap))
 	for key, a := range aggMap {
 		c := a.contrib
 
@@ -109,7 +109,7 @@ func (s *SkillService) ApplyContributions(ctx context.Context, contributions []S
 		}
 
 		if skill == nil {
-			skill = model.NewSkillNode(key, c.SkillName, c.Category)
+			skill = schema.NewSkillNode(key, c.SkillName, c.Category)
 			skill.ParentKey = parentKey
 		} else {
 			if c.SkillName != "" {
@@ -176,7 +176,7 @@ func (s *SkillService) filterNewContributions(ctx context.Context, contributions
 	}
 
 	out := make([]SkillContribution, 0, len(unique)+len(passthrough))
-	activities := make([]model.SkillActivity, 0, len(keys))
+	activities := make([]schema.SkillActivity, 0, len(keys))
 
 	for _, c := range unique {
 		k := repository.SkillActivityKey{Source: c.Source, EvidenceID: c.EvidenceID, SkillKey: c.SkillKey}
@@ -184,7 +184,7 @@ func (s *SkillService) filterNewContributions(ctx context.Context, contributions
 			continue
 		}
 		out = append(out, c)
-		activities = append(activities, model.SkillActivity{
+		activities = append(activities, schema.SkillActivity{
 			SkillKey:   c.SkillKey,
 			Source:     c.Source,
 			EvidenceID: c.EvidenceID,
@@ -204,7 +204,7 @@ func (s *SkillService) filterNewContributions(ctx context.Context, contributions
 }
 
 // UpdateSkillsFromDiffsWithCategory 根据 AI 返回的技能信息更新技能（兼容旧调用，内部转贡献）
-func (s *SkillService) UpdateSkillsFromDiffsWithCategory(ctx context.Context, diffs []model.Diff, skills []ai.SkillWithCategory) error {
+func (s *SkillService) UpdateSkillsFromDiffsWithCategory(ctx context.Context, diffs []schema.Diff, skills []ai.SkillWithCategory) error {
 	if len(skills) == 0 {
 		return nil
 	}
@@ -301,7 +301,7 @@ func (s *SkillService) addSkillExp(ctx context.Context, skillKey string, exp flo
 
 	if skill == nil {
 		// 创建新技能（使用 key 作为名称，分类为 other）
-		skill = model.NewSkillNode(skillKey, model.NormalizeSkillName(skillKey), "other")
+		skill = schema.NewSkillNode(skillKey, schema.NormalizeSkillName(skillKey), "other")
 	}
 
 	// 添加经验
@@ -472,7 +472,7 @@ type SkillNodeView struct {
 }
 
 // calculateTrend 计算技能趋势
-func (s *SkillService) calculateTrend(skill *model.SkillNode) string {
+func (s *SkillService) calculateTrend(skill *schema.SkillNode) string {
 	daysInactive := skill.DaysInactive()
 	if daysInactive == 0 {
 		return "up"
