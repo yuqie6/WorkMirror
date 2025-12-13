@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import './App.css';
 import { GetTodaySummary, GetDailySummary, ListSummaryIndex, GetPeriodSummary, ListPeriodSummaryIndex, GetSkillTree, GetAppStats } from "./api/app";
 import MainLayout from './components/layout/MainLayout';
@@ -35,6 +35,7 @@ function App() {
     const [selectedDate, setSelectedDate] = useState<string | null>(null);
     const [skills, setSkills] = useState<SkillNode[]>([]);
     const [appStats, setAppStats] = useState<AppStat[]>([]);
+    const selectedDateRef = useRef<string | null>(null);
     
     // UI状态
     const [loading, setLoading] = useState(false);
@@ -48,9 +49,10 @@ function App() {
         setPeriodSummary(null); // 清除阶段汇总
         try {
             const targetDate = date || new Date().toISOString().slice(0, 10);
-            const result = date ? await GetDailySummary(targetDate) : await GetTodaySummary();
+            const result = date ? await GetDailySummary(targetDate) : await GetTodaySummary(true);
             setSummary(result);
             setSelectedDate(targetDate);
+            await loadAppStats(targetDate);
         } catch (e: any) {
             setError(e.message || '加载失败');
         } finally {
@@ -66,7 +68,7 @@ function App() {
         setSummary(null); // 清除日报
         setSelectedDate(null);
         try {
-            const result = await GetPeriodSummary(periodType, startDate || ""); // 为空表示当前周/月
+            const result = await GetPeriodSummary(periodType, startDate || "", true); // 用户点击时强制刷新
             setPeriodSummary(result);
             await loadPeriodSummaryIndex(periodType);
         } catch (e: any) {
@@ -109,9 +111,10 @@ function App() {
     };
 
     // 加载应用统计
-    const loadAppStats = async () => {
+    const loadAppStats = async (date?: string) => {
         try {
-            const result = await GetAppStats();
+            const effectiveDate = date || selectedDateRef.current || undefined;
+            const result = await GetAppStats(effectiveDate);
             setAppStats(result || []);
         } catch (e: any) {
             console.error('加载应用统计失败:', e);
@@ -146,6 +149,10 @@ function App() {
             es.close();
         };
     }, []);
+
+    useEffect(() => {
+        selectedDateRef.current = selectedDate;
+    }, [selectedDate]);
 
     // 视图渲染
     const renderContent = () => {

@@ -29,6 +29,7 @@ func normalizeToMonthStart(t time.Time) time.Time {
 func (a *API) HandlePeriodSummary(w http.ResponseWriter, r *http.Request) {
 	periodType := strings.TrimSpace(r.URL.Query().Get("type"))
 	startDateStr := strings.TrimSpace(r.URL.Query().Get("start_date"))
+	force := strings.TrimSpace(r.URL.Query().Get("force")) == "1"
 	if periodType == "" {
 		WriteError(w, http.StatusBadRequest, "type 不能为空")
 		return
@@ -89,7 +90,7 @@ func (a *API) HandlePeriodSummary(w http.ResponseWriter, r *http.Request) {
 	}
 	dataEndStr := dataEnd.Format("2006-01-02")
 
-	if a.rt.Repos.PeriodSummary != nil {
+	if !force && a.rt.Repos.PeriodSummary != nil {
 		cached, err := a.rt.Repos.PeriodSummary.GetByTypeAndRange(ctx, periodType, startStr, endStr, 365*24*time.Hour)
 		if err == nil && cached != nil {
 			WriteJSON(w, http.StatusOK, periodSummaryToDTO(cached))

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/yuqie6/mirror/internal/dto"
+	"github.com/yuqie6/mirror/internal/service"
 )
 
 func (a *API) HandleTodaySummary(w http.ResponseWriter, r *http.Request) {
@@ -21,7 +22,8 @@ func (a *API) HandleTodaySummary(w http.ResponseWriter, r *http.Request) {
 	}
 
 	today := time.Now().Format("2006-01-02")
-	summary, err := a.rt.Core.Services.AI.GenerateDailySummary(ctx, today)
+	force := strings.TrimSpace(r.URL.Query().Get("force")) == "1"
+	summary, err := a.rt.Core.Services.AI.GenerateDailySummaryWithOptions(ctx, today, service.DailySummaryOptions{Force: force})
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -85,7 +87,8 @@ func (a *API) HandleDailySummary(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	summary, err := a.rt.Core.Services.AI.GenerateDailySummary(ctx, date)
+	force := strings.TrimSpace(r.URL.Query().Get("force")) == "1"
+	summary, err := a.rt.Core.Services.AI.GenerateDailySummaryWithOptions(ctx, date, service.DailySummaryOptions{Force: force})
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, err.Error())
 		return

@@ -71,8 +71,19 @@ func (a *API) HandleTrends(w http.ResponseWriter, r *http.Request) {
 
 func (a *API) HandleAppStats(w http.ResponseWriter, r *http.Request) {
 	now := time.Now()
+
 	startTime := now.AddDate(0, 0, -7).UnixMilli()
 	endTime := now.UnixMilli()
+
+	if date := strings.TrimSpace(r.URL.Query().Get("date")); date != "" {
+		t, err := time.ParseInLocation("2006-01-02", date, time.Local)
+		if err != nil {
+			WriteError(w, http.StatusBadRequest, "日期格式错误，请使用 YYYY-MM-DD")
+			return
+		}
+		startTime = t.UnixMilli()
+		endTime = t.Add(24*time.Hour).UnixMilli() - 1
+	}
 
 	if a.rt == nil || a.rt.Repos.Event == nil {
 		WriteError(w, http.StatusBadRequest, "数据库未初始化")

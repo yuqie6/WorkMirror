@@ -18,12 +18,18 @@ async function requestJSON<T>(url: string, init?: RequestInit): Promise<T> {
     return await res.json() as T;
 }
 
-export async function GetTodaySummary(): Promise<any> {
+export async function GetTodaySummary(force?: boolean): Promise<any> {
+    if (force) {
+        return requestJSON("/api/summary/today?force=1");
+    }
     return requestJSON("/api/summary/today");
 }
 
-export async function GetDailySummary(date: string): Promise<any> {
-    return requestJSON(`/api/summary/daily?date=${encodeURIComponent(date)}`);
+export async function GetDailySummary(date: string, force?: boolean): Promise<any> {
+    const qs = new URLSearchParams();
+    qs.set("date", date);
+    if (force) qs.set("force", "1");
+    return requestJSON(`/api/summary/daily?${qs.toString()}`);
 }
 
 export async function ListSummaryIndex(limit: number): Promise<any> {
@@ -31,10 +37,11 @@ export async function ListSummaryIndex(limit: number): Promise<any> {
     return requestJSON(`/api/summary/index?limit=${encodeURIComponent(String(n))}`);
 }
 
-export async function GetPeriodSummary(periodType: string, startDate: string): Promise<any> {
+export async function GetPeriodSummary(periodType: string, startDate: string, force?: boolean): Promise<any> {
     const qs = new URLSearchParams();
     qs.set("type", periodType);
     if (startDate) qs.set("start_date", startDate);
+    if (force) qs.set("force", "1");
     return requestJSON(`/api/summary/period?${qs.toString()}`);
 }
 
@@ -63,7 +70,10 @@ export async function GetTrends(days: number): Promise<any> {
     return requestJSON(`/api/trends?days=${encodeURIComponent(String(n))}`);
 }
 
-export async function GetAppStats(): Promise<any> {
+export async function GetAppStats(date?: string): Promise<any> {
+    if (date) {
+        return requestJSON(`/api/app-stats?date=${encodeURIComponent(date)}`);
+    }
     return requestJSON("/api/app-stats");
 }
 

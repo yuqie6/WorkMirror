@@ -509,13 +509,33 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     }, [appStats]);
 
     const skillDistribution = useMemo(() => {
-        if (!skills.length) return [];
+        const gained = summary?.skills_gained || [];
+        if (!gained.length) return [];
+
+        const nameToCategory = new Map<string, string>();
+        for (const sk of skills) {
+            const name = (sk.name || '').trim().toLowerCase();
+            if (!name) continue;
+            nameToCategory.set(name, sk.category || 'other');
+        }
+
         const categoryCount: Record<string, number> = {};
-        for (const skill of skills) categoryCount[skill.category || 'other'] = (categoryCount[skill.category || 'other'] || 0) + 1;
-        const total = skills.length;
+        for (const rawName of gained) {
+            const name = (rawName || '').trim().toLowerCase();
+            if (!name) continue;
+            const cat = nameToCategory.get(name) || 'other';
+            categoryCount[cat] = (categoryCount[cat] || 0) + 1;
+        }
+
+        const total = Object.values(categoryCount).reduce((sum, v) => sum + v, 0);
+        if (total <= 0) return [];
+
         const labels: Record<string, string> = { language: '编程语言', framework: '框架', database: '数据库', devops: 'DevOps', tool: '工具', concept: '概念', other: '其他' };
-        return Object.entries(categoryCount).map(([cat, count]) => ({ category: cat, label: labels[cat] || cat, count, percent: Math.round((count / total) * 100) })).sort((a, b) => b.count - a.count).slice(0, 3);
-    }, [skills]);
+        return Object.entries(categoryCount)
+            .map(([cat, count]) => ({ category: cat, label: labels[cat] || cat, count, percent: Math.round((count / total) * 100) }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 3);
+    }, [summary?.skills_gained, skills]);
 
     const renderMainContent = () => {
         if (loading) {

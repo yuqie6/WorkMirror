@@ -23,6 +23,10 @@ type AIService struct {
 	ragService   RAGQuerier // 可选，用于查询历史记忆/索引
 }
 
+type DailySummaryOptions struct {
+	Force bool
+}
+
 // NewAIService 创建 AI 服务
 func NewAIService(
 	analyzer Analyzer,
@@ -168,8 +172,7 @@ func (s *AIService) getSkillInfoList(ctx context.Context) []ai.SkillInfo {
 	return result
 }
 
-// GenerateDailySummary 生成每日总结
-func (s *AIService) GenerateDailySummary(ctx context.Context, date string) (*schema.DailySummary, error) {
+func (s *AIService) GenerateDailySummaryWithOptions(ctx context.Context, date string, opts DailySummaryOptions) (*schema.DailySummary, error) {
 	// 尝试获取缓存
 	cached, err := s.summaryRepo.GetByDate(ctx, date)
 	if err != nil {
@@ -178,16 +181,18 @@ func (s *AIService) GenerateDailySummary(ctx context.Context, date string) (*sch
 
 	today := time.Now().Format("2006-01-02")
 
-	// 如果是过去日期的总结，直接返回缓存
-	if date != today && cached != nil {
-		slog.Info("返回历史总结缓存", "date", date)
-		return cached, nil
-	}
+	if !opts.Force {
+		// 如果是过去日期的总结，直接返回缓存
+		if date != today && cached != nil {
+			slog.Info("返回历史总结缓存", "date", date)
+			return cached, nil
+		}
 
-	// 如果是今日总结，且最近 5 分钟内生成过，直接返回
-	if date == today && cached != nil && time.Since(cached.UpdatedAt) < 5*time.Minute {
-		slog.Info("返回最近生成的今日总结", "date", date)
-		return cached, nil
+		// 如果是今日总结，且最近 5 分钟内生成过，直接返回
+		if date == today && cached != nil && time.Since(cached.UpdatedAt) < 5*time.Minute {
+			slog.Info("返回最近生成的今日总结", "date", date)
+			return cached, nil
+		}
 	}
 
 	// 获取当日 Diff
@@ -293,6 +298,11 @@ func (s *AIService) GenerateDailySummary(ctx context.Context, date string) (*sch
 	}
 
 	return summary, nil
+}
+
+// GenerateDailySummary 生成每日总结
+func (s *AIService) GenerateDailySummary(ctx context.Context, date string) (*schema.DailySummary, error) {
+	return s.GenerateDailySummaryWithOptions(ctx, date, DailySummaryOptions{})
 }
 
 // GenerateWeeklySummary 生成周报（代理到 analyzer）

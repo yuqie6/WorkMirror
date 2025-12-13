@@ -183,15 +183,39 @@ func (a *DiffAnalyzer) GenerateDailySummary(ctx context.Context, req *DailySumma
 		return nil, fmt.Errorf("DeepSeek API 未配置")
 	}
 
+	windowTotal := 0
+	for _, w := range req.WindowEvents {
+		if w.Duration > 0 {
+			windowTotal += w.Duration
+		}
+	}
+	diffCountTotal := len(req.Diffs)
+	linesChangedTotal := 0
+	for _, d := range req.Diffs {
+		if d.LinesChanged > 0 {
+			linesChangedTotal += d.LinesChanged
+		}
+	}
+
 	// 构建窗口使用摘要
 	var windowSummary strings.Builder
-	for _, w := range req.WindowEvents {
+	windowEvents := req.WindowEvents
+	// 控制 prompt 规模：只展示前 12 个应用（通常已按时长排序）
+	if len(windowEvents) > 12 {
+		windowEvents = windowEvents[:12]
+	}
+	for _, w := range windowEvents {
 		windowSummary.WriteString(fmt.Sprintf("- %s: %d 分钟\n", w.AppName, w.Duration))
 	}
 
 	// 构建 Diff 摘要
 	var diffSummary strings.Builder
-	for _, d := range req.Diffs {
+	diffs := req.Diffs
+	// 控制 prompt 规模：只展开前 20 个 diff（其余用统计信息概括）
+	if len(diffs) > 20 {
+		diffs = diffs[:20]
+	}
+	for _, d := range diffs {
 		// 优先使用预分析解读，否则使用原始 diff 内容
 		description := d.Insight
 		if description == "" && d.DiffContent != "" {
@@ -218,23 +242,27 @@ func (a *DiffAnalyzer) GenerateDailySummary(ctx context.Context, req *DailySumma
 	}
 
 	prompt := fmt.Sprintf(`根据以下行为数据，生成今日工作/学习总结。
-%s
-日期: %s
+	%s
+	日期: %s
 
-应用使用时长:
-%s
+	统计概览:
+	- 应用使用总时长: %d 分钟（下方仅展示 Top %d）
+	- 代码变更: %d 次（共 %d 行变更；下方仅展示前 %d 条）
 
-代码变更:
-%s
+	应用使用时长:
+	%s
 
-请用 JSON 格式返回（不要 markdown 代码块）:
-{
-  "summary": "今日总结（2-3句话概括今天做了什么，如有相关历史记忆请关联分析）",
-  "highlights": "今日亮点（最有价值的学习或成果）",
-  "struggles": "今日困难（遇到的问题或挑战，如果没有则写'无'）",
-  "skills_gained": ["今日涉及的技能"],
-  "suggestions": "明日建议（基于今天和历史工作给出建议）"
-}`, historySummary.String(), req.Date, windowSummary.String(), diffSummary.String())
+	代码变更:
+	%s
+
+	请用 JSON 格式返回（不要 markdown 代码块）:
+	{
+	  "summary": "今日总结（请根据数据量自适应篇幅：轻量日 2-3 句；中等 5-8 句；高强度/多变更 10-16 句。尽量引用具体证据：应用名/文件名/语言/技能，避免套话。）",
+	  "highlights": "今日亮点（2-6 条要点，用换行分隔；每条尽量具体。若确实没有，写'无'）",
+	  "struggles": "今日困难（0-5 条要点，用换行分隔；没有就写'无'）",
+	  "skills_gained": ["今日涉及的技能（按重要性排序，允许 0-12 个）"],
+	  "suggestions": "明日建议（2-6 条要点，用换行分隔；优先给可执行的小动作）"
+	}`, historySummary.String(), req.Date, windowTotal, len(windowEvents), diffCountTotal, linesChangedTotal, len(diffs), windowSummary.String(), diffSummary.String())
 
 	messages := []Message{
 		{Role: "system", Content: "你是一个个人成长助手，帮助用户回顾每天的工作和学习，提供有建设性的反馈。回复必须是纯 JSON。"},
@@ -468,15 +496,15 @@ func (a *DiffAnalyzer) GenerateWeeklySummary(ctx context.Context, req *WeeklySum
 每日记录:
 %s
 
-请用 JSON 格式返回（不要 markdown 代码块）:
-{
-  "overview": "%s整体概述（3-4句话总结这段时间做了什么，有什么进展）",
-  "achievements": ["成就1", "成就2", "成就3"],
-  "patterns": "学习模式分析（发现了什么规律或趋势）",
-  "suggestions": "%s建议（基于%s情况给出具体可行的建议）",
-  "top_skills": ["%s最常用/最活跃的技能"]
-}
-注意：如果这是月汇总，请不要使用“本周/下周”的措辞。`, periodScope, req.StartDate, req.EndDate, req.TotalCoding, req.TotalDiffs, dailyDetails.String(), periodLabel, nextLabel, periodLabel, periodLabel)
+	请用 JSON 格式返回（不要 markdown 代码块）:
+	{
+	  "overview": "%s整体概述（请根据数据量自适应：轻量期 3-5 句；中等 6-10 句；高强度 10-16 句。尽量引用具体证据：哪几天在做什么、主要语言/主题变化、节奏变化。）",
+	  "achievements": ["主要成就（请按重要性给 3-8 条，不要固定 3 条；每条尽量具体）"],
+	  "patterns": "学习模式分析（请写成一段有观点的分析：投入/产出、节奏、语言/技能迁移、反复出现的问题）",
+	  "suggestions": "%s建议（请给 3-7 条可执行建议；如果数据偏少，也要说明原因并给出补数据/改流程建议）",
+	  "top_skills": ["%s重点技能（按重要性排序，允许 3-12 个；不要固定数量）"]
+	}
+	注意：如果这是月汇总，请不要使用“本周/下周”的措辞。`, periodScope, req.StartDate, req.EndDate, req.TotalCoding, req.TotalDiffs, dailyDetails.String(), periodLabel, nextLabel, periodLabel)
 
 	messages := []Message{
 		{Role: "system", Content: fmt.Sprintf("你是一个个人成长助手，帮助用户回顾%s的工作和学习，提供有深度的分析和建设性的反馈。回复必须是纯 JSON。", periodScope)},
