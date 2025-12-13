@@ -4,6 +4,7 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -34,4 +35,16 @@ func parseInt64Param(value string) (int64, error) {
 		return 0, fmt.Errorf("参数为空")
 	}
 	return strconv.ParseInt(v, 10, 64)
+}
+
+func strconvAtoiSafe(s string) (int, error) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return 0, errors.New("empty")
+	}
+	n, err := strconv.Atoi(s)
+	if err != nil {
+		return 0, err
+	}
+	return n, nil
 }
