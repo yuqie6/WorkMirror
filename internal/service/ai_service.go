@@ -135,7 +135,10 @@ func (s *AIService) AnalyzePendingDiffs(ctx context.Context, limit int) (int, er
 
 // getSkillInfoList 获取简化的技能列表（传给 AI）
 func (s *AIService) getSkillInfoList(ctx context.Context) []ai.SkillInfo {
-	skills, err := s.skillService.skillRepo.GetAll(ctx)
+	if s.skillService == nil {
+		return nil
+	}
+	skills, err := s.skillService.GetAllSkills(ctx)
 	if err != nil {
 		slog.Warn("获取技能列表失败", "error", err)
 		return nil

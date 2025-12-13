@@ -157,8 +157,9 @@ func (s *SessionService) buildSessionsForRange(
 			continue
 		}
 		if s.sessionDiffRepo != nil && sess.Metadata != nil {
-			if raw, ok := sess.Metadata["diff_ids"].([]int64); ok && len(raw) > 0 {
-				_ = s.sessionDiffRepo.BatchInsert(ctx, sess.ID, raw)
+			diffIDs := getSessionDiffIDs(sess.Metadata)
+			if len(diffIDs) > 0 {
+				_ = s.sessionDiffRepo.BatchInsert(ctx, sess.ID, diffIDs)
 			}
 		}
 		created++
@@ -269,9 +270,7 @@ func (s *SessionService) splitSessions(events []schema.Event, diffs []schema.Dif
 		}
 
 		meta := make(schema.JSONMap)
-		if len(diffIDs) > 0 {
-			meta["diff_ids"] = diffIDs
-		}
+		setSessionDiffIDs(meta, diffIDs)
 
 		sessions = append(sessions, &schema.Session{
 			Date:       formatDate(currentStart),
@@ -355,7 +354,7 @@ func (s *SessionService) splitSessions(events []schema.Event, diffs []schema.Dif
 		if sess == nil {
 			continue
 		}
-		hasDiffs := sess.Metadata != nil && sess.Metadata["diff_ids"] != nil
+		hasDiffs := sess.Metadata != nil && len(getSessionDiffIDs(sess.Metadata)) > 0
 		if sess.PrimaryApp == "" && !hasDiffs {
 			continue
 		}
@@ -386,12 +385,9 @@ func (s *SessionService) attachBrowserEvents(sessions []*schema.Session, events 
 		if sess.Metadata == nil {
 			sess.Metadata = make(schema.JSONMap)
 		}
-		raw, ok := sess.Metadata["browser_event_ids"].([]int64)
-		if !ok {
-			raw = []int64{}
-		}
+		raw := getSessionBrowserEventIDs(sess.Metadata)
 		raw = append(raw, be.ID)
-		sess.Metadata["browser_event_ids"] = raw
+		setSessionBrowserEventIDs(sess.Metadata, raw)
 	}
 }
 

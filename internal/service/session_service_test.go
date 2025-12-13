@@ -216,9 +216,9 @@ func TestSplitSessions_DiffsAttachedToSession(t *testing.T) {
 		t.Fatalf("sessions count=%d, want 1", len(sessions))
 	}
 
-	diffIDs, ok := sessions[0].Metadata["diff_ids"].([]int64)
-	if !ok || len(diffIDs) != 2 {
-		t.Fatalf("diff_ids=%v, want [101, 102]", sessions[0].Metadata["diff_ids"])
+	diffIDs := getSessionDiffIDs(sessions[0].Metadata)
+	if len(diffIDs) != 2 || diffIDs[0] != 101 || diffIDs[1] != 102 {
+		t.Fatalf("diff_ids=%v, want [101, 102]", diffIDs)
 	}
 }
 

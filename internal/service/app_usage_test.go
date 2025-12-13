@@ -61,4 +61,3 @@ func TestSumCodingMinutesFromAppStats(t *testing.T) {
 		t.Fatalf("SumCodingMinutesFromAppStats=%d, want 1", got)
 	}
 }
-

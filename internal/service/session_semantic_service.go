@@ -142,7 +142,7 @@ func (s *SessionSemanticService) GetSessionsBySkill(ctx context.Context, skillKe
 			break
 		}
 		sess := sessions[i]
-		keys := schema.GetStringSlice(sess.Metadata, "skill_keys")
+		keys := schema.GetStringSlice(sess.Metadata, sessionMetaSkillKeys)
 		for _, k := range keys {
 			if k == skillKey {
 				matched = append(matched, sess)
@@ -164,7 +164,7 @@ func shouldEnrichSession(sess *schema.Session) bool {
 		return true
 	}
 	// 证据索引缺失也需要补齐（用于 skill→session 追溯）
-	if len(schema.GetStringSlice(sess.Metadata, "skill_keys")) == 0 && len(sess.SkillsInvolved) == 0 {
+	if len(schema.GetStringSlice(sess.Metadata, sessionMetaSkillKeys)) == 0 && len(sess.SkillsInvolved) == 0 {
 		return true
 	}
 	return false
@@ -181,7 +181,7 @@ func (s *SessionSemanticService) enrichOne(ctx context.Context, sess *schema.Ses
 		meta = make(schema.JSONMap)
 	}
 
-	diffIDs := schema.GetInt64Slice(meta, "diff_ids")
+	diffIDs := getSessionDiffIDs(meta)
 	var diffs []schema.Diff
 	var err error
 	if len(diffIDs) > 0 {
@@ -198,7 +198,7 @@ func (s *SessionSemanticService) enrichOne(ctx context.Context, sess *schema.Ses
 			diffIDs = append(diffIDs, d.ID)
 		}
 	}
-	schema.SetInt64Slice(meta, "diff_ids", diffIDs)
+	setSessionDiffIDs(meta, diffIDs)
 
 	// 应用使用统计
 	appStats, err := s.eventRepo.GetAppStats(ctx, sess.StartTime, sess.EndTime)
@@ -208,7 +208,7 @@ func (s *SessionSemanticService) enrichOne(ctx context.Context, sess *schema.Ses
 	topApps := WindowEventInfosFromAppStats(appStats, DefaultTopAppsLimit)
 
 	// 浏览事件（优先用索引 ID，否则按时间窗补全）
-	browserIDs := schema.GetInt64Slice(meta, "browser_event_ids")
+	browserIDs := getSessionBrowserEventIDs(meta)
 	var browserEvents []schema.BrowserEvent
 	if len(browserIDs) > 0 {
 		browserEvents, err = s.browserRepo.GetByIDs(ctx, browserIDs)
@@ -224,7 +224,7 @@ func (s *SessionSemanticService) enrichOne(ctx context.Context, sess *schema.Ses
 			browserIDs = append(browserIDs, e.ID)
 		}
 	}
-	schema.SetInt64Slice(meta, "browser_event_ids", browserIDs)
+	setSessionBrowserEventIDs(meta, browserIDs)
 
 	// 技能聚合：从已分析 Diff 归因（避免凭空推断）
 	skillNameToKey := make(map[string]string)
@@ -257,7 +257,7 @@ func (s *SessionSemanticService) enrichOne(ctx context.Context, sess *schema.Ses
 		skillNames = append(skillNames, skillKeyToName[k])
 	}
 
-	meta["skill_keys"] = skillKeys
+	meta[sessionMetaSkillKeys] = skillKeys
 
 	// 浏览信息截断，用于 prompt/展示
 	browserInfos := make([]ai.BrowserInfo, 0, 10)
@@ -276,7 +276,7 @@ func (s *SessionSemanticService) enrichOne(ctx context.Context, sess *schema.Ses
 	}
 	topDomains := topKeysByCount(domainCount, 6)
 	if len(topDomains) > 0 {
-		meta["top_domains"] = topDomains
+		meta[sessionMetaTopDomains] = topDomains
 	}
 
 	diffInfos := make([]ai.DiffInfo, 0, len(diffs))
@@ -318,7 +318,7 @@ func (s *SessionSemanticService) enrichOne(ctx context.Context, sess *schema.Ses
 						"content":    content,
 					})
 				}
-				meta["rag_refs"] = refs
+				meta[sessionMetaRAGRefs] = refs
 			}
 		}
 	}
@@ -358,10 +358,10 @@ func (s *SessionSemanticService) enrichOne(ctx context.Context, sess *schema.Ses
 						keys = append(keys, k)
 					}
 				}
-				meta["skill_keys"] = uniqueNonEmpty(keys, 16)
+				meta[sessionMetaSkillKeys] = uniqueNonEmpty(keys, 16)
 			}
 			if len(res.Tags) > 0 {
-				meta["tags"] = uniqueNonEmpty(res.Tags, 6)
+				meta[sessionMetaTags] = uniqueNonEmpty(res.Tags, 6)
 			}
 		}
 	}
@@ -484,12 +484,4 @@ func uniqueNonEmpty(in []string, limit int) []string {
 		}
 	}
 	return out
-}
-
-// minInt 返回两个整数的较小值
-func minInt(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
