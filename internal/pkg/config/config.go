@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/spf13/viper"
@@ -160,7 +161,13 @@ func setDefaults(v *viper.Viper) {
 	})
 
 	// Storage
-	v.SetDefault("storage.db_path", "./data/mirror.db")
+	defaultDBPath := "./data/mirror.db"
+	if runtime.GOOS == "windows" {
+		if userConfigDir, err := os.UserConfigDir(); err == nil && userConfigDir != "" {
+			defaultDBPath = filepath.Join(userConfigDir, "Mirror", "data", "mirror.db")
+		}
+	}
+	v.SetDefault("storage.db_path", defaultDBPath)
 
 	// Diff
 	v.SetDefault("diff.enabled", true)

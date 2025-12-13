@@ -9,11 +9,24 @@ import (
 	"os/signal"
 	"syscall"
 
+	"golang.org/x/sys/windows"
+
 	"github.com/yuqie6/mirror/internal/bootstrap"
 	"github.com/yuqie6/mirror/internal/handler"
 )
 
 func main() {
+	// 单实例：避免 UI 多次启动导致重复拉起多个 Agent
+	// 使用 Local\ 将范围限制在当前会话，避免多用户/多会话间互相影响。
+	mutex, err := windows.CreateMutex(nil, false, windows.StringToUTF16Ptr(`Local\MirrorAgentSingletonMutex`))
+	if err == nil {
+		if windows.GetLastError() == windows.ERROR_ALREADY_EXISTS {
+			_ = windows.CloseHandle(mutex)
+			return
+		}
+		defer windows.CloseHandle(mutex)
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

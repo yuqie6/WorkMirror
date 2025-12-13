@@ -39,6 +39,7 @@ Thumbs.db
 # 构建目录
 dist/
 build/
+.cache/
 
 .agent
 AGENTS.md

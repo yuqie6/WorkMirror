@@ -25,6 +25,20 @@ go build -o mirror.exe ./cmd/mirror-agent/
 ./mirror.exe
 ```
 
+## 打包安装包（Windows）
+
+前置：Go 1.25.x、Node 16+、Wails v2、Inno Setup 6（提供 `ISCC.exe`）。
+
+在 PowerShell 执行：
+
+```powershell
+.\scripts\package-windows.ps1
+```
+
+产物输出到 `build/installer/windows/out/`（可用 `-Version` / `-OutDir` 覆盖）。
+
+说明：安装后以 UI 为主入口，UI 启动时会自动拉起后台 Agent（托盘常驻，避免重复启动已做单实例保护）。
+
 ## 项目结构
 
 ```

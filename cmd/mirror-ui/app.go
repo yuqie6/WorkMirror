@@ -63,11 +63,14 @@ func NewApp() *App {
 // startup is called when the app starts
 func (a *App) startup(ctx context.Context) {
 	a.mu.Lock()
-	defer a.mu.Unlock()
-
 	a.ctx = ctx
+	a.mu.Unlock()
+
+	startAgentOnStartup()
 
 	core, err := bootstrap.NewCore("")
+	a.mu.Lock()
+	defer a.mu.Unlock()
 	if err != nil {
 		// UI 启动时不 panic，改为延迟报错
 		a.core = nil
