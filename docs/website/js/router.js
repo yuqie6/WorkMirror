@@ -6,15 +6,19 @@ let currentDocId = 'install';
 // Cache for loaded documents
 const docCache = {};
 
-// Mobile menu toggle
+// Mobile menu toggle with accessibility support
 function toggleMobileMenu() {
-    const menu = document.getElementById('mobile-menu');
-    const btn = document.getElementById('mobile-menu-btn');
-    if (menu && btn) {
-        const isHidden = menu.classList.contains('hidden');
-        menu.classList.toggle('hidden');
-        // Update ARIA attribute for accessibility
-        btn.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
+    try {
+        const menu = document.getElementById('mobile-menu');
+        const btn = document.getElementById('mobile-menu-btn');
+        if (menu && btn) {
+            const isHidden = menu.classList.contains('hidden');
+            menu.classList.toggle('hidden');
+            // Update ARIA attribute for accessibility
+            btn.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
+        }
+    } catch (error) {
+        console.error('Error toggling mobile menu:', error);
     }
 }
 

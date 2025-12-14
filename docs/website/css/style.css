@@ -6,11 +6,11 @@
 ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
 
-/* Mobile-friendly touch targets for primary interactive elements */
+/* Mobile-friendly touch targets for buttons */
 @media (max-width: 640px) {
     button:not(.inline-icon),
-    a[class*='px-'][class*='py-'],
-    [role="button"] {
+    [role="button"],
+    .touch-target {
         min-height: 44px;
     }
 }
