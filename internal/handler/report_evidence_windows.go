@@ -3,8 +3,8 @@
 package handler
 
 import (
-	"github.com/yuqie6/mirror/internal/dto"
-	"github.com/yuqie6/mirror/internal/service"
+	"github.com/yuqie6/WorkMirror/internal/dto"
+	"github.com/yuqie6/WorkMirror/internal/service"
 )
 
 func toSessionRefDTO(r service.EvidenceSessionRef) dto.SessionRefDTO {

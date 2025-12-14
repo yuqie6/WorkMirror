@@ -3,9 +3,9 @@ package service
 import (
 	"context"
 
-	"github.com/yuqie6/mirror/internal/ai"
-	"github.com/yuqie6/mirror/internal/repository"
-	"github.com/yuqie6/mirror/internal/schema"
+	"github.com/yuqie6/WorkMirror/internal/ai"
+	"github.com/yuqie6/WorkMirror/internal/repository"
+	"github.com/yuqie6/WorkMirror/internal/schema"
 )
 
 // 仓储/外部依赖的最小接口集合（ISP）

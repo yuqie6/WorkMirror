@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/yuqie6/mirror/internal/schema"
+	"github.com/yuqie6/WorkMirror/internal/schema"
 )
 
 // SessionService 基于事件流切分会话（工程规则优先）

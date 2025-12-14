@@ -58,7 +58,7 @@ export default function MainLayout({
         <div className="p-4 border-b border-zinc-800">
           <h1 className="text-lg font-bold tracking-tight text-white flex items-center gap-2">
             <span className="w-2 h-6 bg-indigo-500 rounded-sm"></span>
-            Project Mirror
+            复盘镜
           </h1>
           <p className="text-xs text-zinc-500 mt-1 font-mono">v0.2-alpha</p>
         </div>

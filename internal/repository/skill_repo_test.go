@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/yuqie6/mirror/internal/schema"
-	"github.com/yuqie6/mirror/internal/testutil"
+	"github.com/yuqie6/WorkMirror/internal/schema"
+	"github.com/yuqie6/WorkMirror/internal/testutil"
 )
 
 func TestSkillRepositoryUpsertAndGet(t *testing.T) {

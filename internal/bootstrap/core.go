@@ -6,10 +6,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/yuqie6/mirror/internal/ai"
-	"github.com/yuqie6/mirror/internal/pkg/config"
-	"github.com/yuqie6/mirror/internal/repository"
-	"github.com/yuqie6/mirror/internal/service"
+	"github.com/yuqie6/WorkMirror/internal/ai"
+	"github.com/yuqie6/WorkMirror/internal/pkg/config"
+	"github.com/yuqie6/WorkMirror/internal/repository"
+	"github.com/yuqie6/WorkMirror/internal/service"
 )
 
 // Core 持有跨二进制共享的核心依赖

@@ -1,4 +1,4 @@
-• # Project Mirror PRD v0.2（产品化闭环版：Windows 托盘 Agent + 本地 Web UI；无 Wails/无 CLI）
+• # 复盘镜 WorkMirror PRD v0.2（产品化闭环版：Windows 托盘 Agent + 本地 Web UI；无 Wails/无 CLI）
 
 ## 0. 文档目的
 
@@ -14,7 +14,7 @@
 
 ## 1. 一句话定位（对外）
 
-Project Mirror：自动把你每天/每周的真实工作学习行为整理成可追溯的证据链回顾，并给出下一步建议（默认本地、可离线）。
+复盘镜 WorkMirror：自动把你每天/每周的真实工作学习行为整理成可追溯的证据链回顾，并给出下一步建议（默认本地、可离线）。
 
 ---
 
@@ -53,7 +53,7 @@ Project Mirror：自动把你每天/每周的真实工作学习行为整理成�
 
 ### 4.1 交付形态
 
-- mirror.exe（Windows 托盘常驻）
+- workmirror.exe（Windows 托盘常驻）
 - 内置本地 HTTP Server（随机端口，监听 127.0.0.1）
 - 内置 Web UI（React/Vite SPA）：运行时优先加载同目录 frontend/dist/，否则回退内嵌资源
 - 端口发现：写入 ./data/http_base_url.txt

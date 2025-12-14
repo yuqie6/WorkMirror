@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yuqie6/mirror/internal/bootstrap"
-	"github.com/yuqie6/mirror/internal/dto"
-	"github.com/yuqie6/mirror/internal/schema"
-	"github.com/yuqie6/mirror/internal/service"
+	"github.com/yuqie6/WorkMirror/internal/bootstrap"
+	"github.com/yuqie6/WorkMirror/internal/dto"
+	"github.com/yuqie6/WorkMirror/internal/schema"
+	"github.com/yuqie6/WorkMirror/internal/service"
 )
 
 func normalizeToMonday(t time.Time) time.Time {

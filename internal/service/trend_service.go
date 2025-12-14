@@ -6,8 +6,8 @@ import (
 	"sort"
 	"time"
 
-	"github.com/yuqie6/mirror/internal/repository"
-	"github.com/yuqie6/mirror/internal/schema"
+	"github.com/yuqie6/WorkMirror/internal/repository"
+	"github.com/yuqie6/WorkMirror/internal/schema"
 )
 
 // TrendService 趋势分析服务

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yuqie6/mirror/internal/schema"
+	"github.com/yuqie6/WorkMirror/internal/schema"
 )
 
 // Report evidence mapping (Claim -> Sessions)

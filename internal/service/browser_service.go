@@ -9,9 +9,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/yuqie6/mirror/internal/collector"
-	"github.com/yuqie6/mirror/internal/pkg/privacy"
-	"github.com/yuqie6/mirror/internal/schema"
+	"github.com/yuqie6/WorkMirror/internal/collector"
+	"github.com/yuqie6/WorkMirror/internal/pkg/privacy"
+	"github.com/yuqie6/WorkMirror/internal/schema"
 )
 
 // BrowserService 浏览器采集服务

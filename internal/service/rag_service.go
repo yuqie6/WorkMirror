@@ -9,9 +9,9 @@ import (
 	"time"
 
 	chromem "github.com/philippgille/chromem-go"
-	"github.com/yuqie6/mirror/internal/ai"
-	"github.com/yuqie6/mirror/internal/repository"
-	"github.com/yuqie6/mirror/internal/schema"
+	"github.com/yuqie6/WorkMirror/internal/ai"
+	"github.com/yuqie6/WorkMirror/internal/repository"
+	"github.com/yuqie6/WorkMirror/internal/schema"
 )
 
 // RAGService RAG 长期记忆服务

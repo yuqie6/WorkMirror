@@ -6,10 +6,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/yuqie6/mirror/internal/collector"
-	"github.com/yuqie6/mirror/internal/eventbus"
-	"github.com/yuqie6/mirror/internal/pkg/privacy"
-	"github.com/yuqie6/mirror/internal/service"
+	"github.com/yuqie6/WorkMirror/internal/collector"
+	"github.com/yuqie6/WorkMirror/internal/eventbus"
+	"github.com/yuqie6/WorkMirror/internal/pkg/privacy"
+	"github.com/yuqie6/WorkMirror/internal/service"
 )
 
 // AgentRuntime 包含 Agent 二进制需要启动的采集与后台任务

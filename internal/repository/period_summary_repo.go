@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/yuqie6/mirror/internal/schema"
+	"github.com/yuqie6/WorkMirror/internal/schema"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )

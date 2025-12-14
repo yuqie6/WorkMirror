@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yuqie6/mirror/internal/dto"
-	"github.com/yuqie6/mirror/internal/service"
+	"github.com/yuqie6/WorkMirror/internal/dto"
+	"github.com/yuqie6/WorkMirror/internal/service"
 )
 
 func (a *API) HandleTrends(w http.ResponseWriter, r *http.Request) {

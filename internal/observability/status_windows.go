@@ -8,12 +8,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yuqie6/mirror/internal/bootstrap"
-	"github.com/yuqie6/mirror/internal/collector"
-	"github.com/yuqie6/mirror/internal/dto"
-	"github.com/yuqie6/mirror/internal/pkg/config"
-	"github.com/yuqie6/mirror/internal/pkg/privacy"
-	"github.com/yuqie6/mirror/internal/schema"
+	"github.com/yuqie6/WorkMirror/internal/bootstrap"
+	"github.com/yuqie6/WorkMirror/internal/collector"
+	"github.com/yuqie6/WorkMirror/internal/dto"
+	"github.com/yuqie6/WorkMirror/internal/pkg/config"
+	"github.com/yuqie6/WorkMirror/internal/pkg/privacy"
+	"github.com/yuqie6/WorkMirror/internal/schema"
 )
 
 func BuildStatus(ctx context.Context, rt *bootstrap.AgentRuntime, startedAt time.Time) (*dto.StatusDTO, error) {

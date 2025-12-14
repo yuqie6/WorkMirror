@@ -1,6 +1,6 @@
 package service
 
-import "github.com/yuqie6/mirror/internal/schema"
+import "github.com/yuqie6/WorkMirror/internal/schema"
 
 const (
 	sessionMetaDiffIDs         = "diff_ids"

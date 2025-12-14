@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yuqie6/mirror/internal/bootstrap"
-	"github.com/yuqie6/mirror/internal/eventbus"
+	"github.com/yuqie6/WorkMirror/internal/bootstrap"
+	"github.com/yuqie6/WorkMirror/internal/eventbus"
 )
 
 // API HTTP 处理器

@@ -9,8 +9,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/yuqie6/mirror/internal/ai"
-	"github.com/yuqie6/mirror/internal/schema"
+	"github.com/yuqie6/WorkMirror/internal/ai"
+	"github.com/yuqie6/WorkMirror/internal/schema"
 )
 
 // SessionSemanticService 将低层事件/证据转为“可理解会话”（语义摘要 + 技能 + 证据链）

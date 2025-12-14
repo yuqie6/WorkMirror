@@ -9,8 +9,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/yuqie6/mirror/internal/collector"
-	"github.com/yuqie6/mirror/internal/schema"
+	"github.com/yuqie6/WorkMirror/internal/collector"
+	"github.com/yuqie6/WorkMirror/internal/schema"
 )
 
 // DiffService Diff 处理服务

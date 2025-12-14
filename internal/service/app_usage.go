@@ -1,8 +1,8 @@
 package service
 
 import (
-	"github.com/yuqie6/mirror/internal/ai"
-	"github.com/yuqie6/mirror/internal/repository"
+	"github.com/yuqie6/WorkMirror/internal/ai"
+	"github.com/yuqie6/WorkMirror/internal/repository"
 )
 
 const DefaultTopAppsLimit = 8

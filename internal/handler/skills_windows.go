@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yuqie6/mirror/internal/dto"
-	"github.com/yuqie6/mirror/internal/schema"
-	"github.com/yuqie6/mirror/internal/service"
+	"github.com/yuqie6/WorkMirror/internal/dto"
+	"github.com/yuqie6/WorkMirror/internal/schema"
+	"github.com/yuqie6/WorkMirror/internal/service"
 )
 
 func (a *API) HandleSkillTree(w http.ResponseWriter, r *http.Request) {

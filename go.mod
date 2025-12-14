@@ -1,4 +1,4 @@
-module github.com/yuqie6/mirror
+module github.com/yuqie6/WorkMirror
 
 go 1.25.4
 

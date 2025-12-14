@@ -16,7 +16,7 @@ import (
 	"time"
 
 	_ "github.com/glebarez/sqlite"
-	"github.com/yuqie6/mirror/internal/schema"
+	"github.com/yuqie6/WorkMirror/internal/schema"
 )
 
 // BrowserCollector 浏览器历史采集器

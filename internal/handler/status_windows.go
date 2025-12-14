@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/yuqie6/mirror/internal/observability"
+	"github.com/yuqie6/WorkMirror/internal/observability"
 )
 
 func (a *API) HandleStatus(w http.ResponseWriter, r *http.Request) {

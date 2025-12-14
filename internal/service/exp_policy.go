@@ -3,7 +3,7 @@ package service
 import (
 	"strings"
 
-	"github.com/yuqie6/mirror/internal/schema"
+	"github.com/yuqie6/WorkMirror/internal/schema"
 )
 
 // ExpPolicy 经验计算策略（可替换）

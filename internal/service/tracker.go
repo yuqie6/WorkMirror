@@ -9,9 +9,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/yuqie6/mirror/internal/collector"
-	"github.com/yuqie6/mirror/internal/pkg/privacy"
-	"github.com/yuqie6/mirror/internal/schema"
+	"github.com/yuqie6/WorkMirror/internal/collector"
+	"github.com/yuqie6/WorkMirror/internal/pkg/privacy"
+	"github.com/yuqie6/WorkMirror/internal/schema"
 )
 
 // TrackerService 追踪服务 - 负责接收事件并批量写入数据库

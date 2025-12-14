@@ -3,7 +3,7 @@ package service
 import (
 	"testing"
 
-	"github.com/yuqie6/mirror/internal/repository"
+	"github.com/yuqie6/WorkMirror/internal/repository"
 )
 
 func TestSecondsToMinutesFloor(t *testing.T) {

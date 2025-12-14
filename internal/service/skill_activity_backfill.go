@@ -5,8 +5,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/yuqie6/mirror/internal/repository"
-	"github.com/yuqie6/mirror/internal/schema"
+	"github.com/yuqie6/WorkMirror/internal/repository"
+	"github.com/yuqie6/WorkMirror/internal/schema"
 )
 
 // BackfillSkillActivitiesFromDiffs 仅回填 skill_activities（不更新 skill_nodes，避免历史双计数）。

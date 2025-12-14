@@ -3,7 +3,7 @@ package service
 import (
 	"time"
 
-	"github.com/yuqie6/mirror/internal/schema"
+	"github.com/yuqie6/WorkMirror/internal/schema"
 )
 
 const (

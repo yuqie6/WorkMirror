@@ -8,9 +8,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/yuqie6/mirror/internal/dto"
-	"github.com/yuqie6/mirror/internal/eventbus"
-	"github.com/yuqie6/mirror/internal/pkg/config"
+	"github.com/yuqie6/WorkMirror/internal/dto"
+	"github.com/yuqie6/WorkMirror/internal/eventbus"
+	"github.com/yuqie6/WorkMirror/internal/pkg/config"
 )
 
 func (a *API) HandleSettings(w http.ResponseWriter, r *http.Request) {

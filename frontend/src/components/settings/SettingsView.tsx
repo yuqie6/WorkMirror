@@ -448,7 +448,7 @@ export default function SettingsView() {
         </CardHeader>
         <CardContent>
           <div className="text-sm text-zinc-400">
-            Project Mirror v0.2-alpha
+            复盘镜 v0.2-alpha
             <br />
             <span className="text-zinc-600">构建日期: 2024-12-14</span>
           </div>

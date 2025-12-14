@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yuqie6/mirror/internal/dto"
-	"github.com/yuqie6/mirror/internal/eventbus"
-	"github.com/yuqie6/mirror/internal/schema"
-	"github.com/yuqie6/mirror/internal/service"
+	"github.com/yuqie6/WorkMirror/internal/dto"
+	"github.com/yuqie6/WorkMirror/internal/eventbus"
+	"github.com/yuqie6/WorkMirror/internal/schema"
+	"github.com/yuqie6/WorkMirror/internal/service"
 )
 
 func (a *API) HandleBuildSessionsForDate(w http.ResponseWriter, r *http.Request) {

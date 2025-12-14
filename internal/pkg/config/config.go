@@ -107,7 +107,7 @@ func Load(configPath string) (*Config, error) {
 	}
 
 	// 支持环境变量
-	v.SetEnvPrefix("MIRROR")
+	v.SetEnvPrefix("WORKMIRROR")
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
 
@@ -151,10 +151,10 @@ func Default() *Config {
 // setDefaults 设置默认值
 func setDefaults(v *viper.Viper) {
 	// App
-	v.SetDefault("app.name", "mirror-agent")
+	v.SetDefault("app.name", "workmirror-agent")
 	v.SetDefault("app.version", "0.1.0")
 	v.SetDefault("app.log_level", "info")
-	v.SetDefault("app.log_path", "./logs/mirror.log")
+	v.SetDefault("app.log_path", "./logs/workmirror.log")
 
 	// Collector
 	v.SetDefault("collector.poll_interval_ms", 500)
@@ -165,7 +165,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("collector.session_idle_min", 6)
 
 	// Storage
-	v.SetDefault("storage.db_path", "./data/mirror.db")
+	v.SetDefault("storage.db_path", "./data/workmirror.db")
 
 	// Diff
 	v.SetDefault("diff.enabled", true)

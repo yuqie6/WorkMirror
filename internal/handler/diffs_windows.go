@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/yuqie6/mirror/internal/dto"
+	"github.com/yuqie6/WorkMirror/internal/dto"
 )
 
 func (a *API) HandleDiffDetail(w http.ResponseWriter, r *http.Request) {

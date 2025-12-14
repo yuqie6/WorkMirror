@@ -3,7 +3,7 @@ package service
 import (
 	"testing"
 
-	"github.com/yuqie6/mirror/internal/schema"
+	"github.com/yuqie6/WorkMirror/internal/schema"
 )
 
 func TestDefaultExpPolicy_EmptyDiffs(t *testing.T) {

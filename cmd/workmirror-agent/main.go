@@ -13,10 +13,10 @@ import (
 
 	"golang.org/x/sys/windows"
 
-	"github.com/yuqie6/mirror/internal/bootstrap"
-	"github.com/yuqie6/mirror/internal/collector"
-	"github.com/yuqie6/mirror/internal/pkg/config"
-	"github.com/yuqie6/mirror/internal/server"
+	"github.com/yuqie6/WorkMirror/internal/bootstrap"
+	"github.com/yuqie6/WorkMirror/internal/collector"
+	"github.com/yuqie6/WorkMirror/internal/pkg/config"
+	"github.com/yuqie6/WorkMirror/internal/server"
 )
 
 func main() {

@@ -19,10 +19,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yuqie6/mirror/internal/bootstrap"
-	"github.com/yuqie6/mirror/internal/eventbus"
-	"github.com/yuqie6/mirror/internal/handler"
-	"github.com/yuqie6/mirror/internal/uiassets"
+	"github.com/yuqie6/WorkMirror/internal/bootstrap"
+	"github.com/yuqie6/WorkMirror/internal/eventbus"
+	"github.com/yuqie6/WorkMirror/internal/handler"
+	"github.com/yuqie6/WorkMirror/internal/uiassets"
 )
 
 // LocalServer 本地 HTTP 服务器

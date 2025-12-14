@@ -13,10 +13,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yuqie6/mirror/internal/bootstrap"
-	"github.com/yuqie6/mirror/internal/dto"
-	"github.com/yuqie6/mirror/internal/pkg/config"
-	"github.com/yuqie6/mirror/internal/pkg/privacy"
+	"github.com/yuqie6/WorkMirror/internal/bootstrap"
+	"github.com/yuqie6/WorkMirror/internal/dto"
+	"github.com/yuqie6/WorkMirror/internal/pkg/config"
+	"github.com/yuqie6/WorkMirror/internal/pkg/privacy"
 )
 
 var ErrNotReady = errors.New("rt not ready")

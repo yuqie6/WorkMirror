@@ -27,18 +27,18 @@
 
 ## 快速开始
 
-推荐直接下载 Releases：<https://github.com/yuqie6/Mirror/releases>
+推荐直接下载 Releases：<https://github.com/yuqie6/WorkMirror/releases>
 
 ## 构建与分发（Windows）
 
-`cmd/mirror-agent/` 仅支持 Windows 构建。
+`cmd/workmirror-agent/` 仅支持 Windows 构建。
 
-推荐“便携分发”（一个 `mirror.exe` + 同目录 `config/` 与 `data/`）。首次启动会自动生成 `./config/config.yaml` 与 `./data/`。
+推荐“便携分发”（一个 `workmirror.exe` + 同目录 `config/` 与 `data/`）。首次启动会自动生成 `./config/config.yaml` 与 `./data/`。
 
 在 PowerShell 执行：
 
 ```powershell
-go build -trimpath -ldflags "-H=windowsgui -s -w" -o .\mirror.exe .\cmd\mirror-agent\
+go build -trimpath -ldflags "-H=windowsgui -s -w" -o .\workmirror.exe .\cmd\workmirror-agent\
 ```
 
 说明：
@@ -48,9 +48,9 @@ go build -trimpath -ldflags "-H=windowsgui -s -w" -o .\mirror.exe .\cmd\mirror-a
 
 ## 运行与数据位置
 
-- 运行：双击 `mirror.exe`，或在终端执行 `.\mirror.exe`
+- 运行：双击 `workmirror.exe`，或在终端执行 `.\workmirror.exe`
 - UI：托盘 → 打开面板；也可读取 `.\data\http_base_url.txt` 后在浏览器打开（例如 `http://127.0.0.1:12345/`）
-- 默认数据库：`.\data\mirror.db`
+- 默认数据库：`.\data\workmirror.db`
 - 端口发现：`.\data\http_base_url.txt`
 
 ## 配置（YAML）
@@ -96,7 +96,7 @@ pnpm dev
 ## 项目结构
 
 ```
-├── cmd/mirror-agent/    # 主程序入口
+├── cmd/workmirror-agent/    # 主程序入口
 ├── config/              # 配置文件
 ├── internal/
 │   ├── collector/       # 采集器（Win32 API / Diff / Browser History）

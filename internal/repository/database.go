@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/glebarez/sqlite" // 纯 Go SQLite 驱动
-	"github.com/yuqie6/mirror/internal/schema"
+	"github.com/yuqie6/WorkMirror/internal/schema"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )

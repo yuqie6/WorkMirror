@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/yuqie6/mirror/internal/ai/prompts"
+	"github.com/yuqie6/WorkMirror/internal/ai/prompts"
 )
 
 // DiffAnalyzer Diff 分析器
