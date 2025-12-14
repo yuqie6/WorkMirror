@@ -48,9 +48,9 @@
 
     <!-- Navigation -->
     <nav class="fixed top-0 w-full z-50 border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-md">
-        <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-            <div class="flex items-center gap-3 cursor-pointer" onclick="switchView('home')">
-                <svg width="32" height="32" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" class="rounded-lg shadow-lg shadow-indigo-500/20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-2 sm:gap-3 cursor-pointer" onclick="switchView('home')">
+                <svg width="28" height="28" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" class="rounded-lg shadow-lg shadow-indigo-500/20 sm:w-8 sm:h-8">
                     <rect width="512" height="512" rx="120" fill="#09090b"/>
                     <path d="M210 150L110 256L210 362V320L148 256L210 192V150Z" fill="url(#nav_emerald)"/>
                     <path d="M302 150L402 256L302 362V320L364 256L302 192V150Z" stroke="url(#nav_indigo)" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
@@ -63,18 +63,43 @@
                         </linearGradient>
                     </defs>
                 </svg>
-                <span class="font-bold text-lg tracking-tight text-white" data-i18n="nav.brand">复盘镜</span>
+                <span class="font-bold text-base sm:text-lg tracking-tight text-white" data-i18n="nav.brand">复盘镜</span>
                 <span class="hidden sm:inline-block px-2 py-0.5 rounded text-[10px] font-mono bg-zinc-800 text-zinc-400 border border-zinc-700">v0.2.0-alpha.1</span>
             </div>
-            <div class="flex items-center gap-6">
-                <button onclick="handleNavClick('features')" class="text-sm font-medium text-zinc-400 hover:text-white transition-colors hidden sm:block" data-i18n="nav.features">特性</button>
-                <button onclick="switchView('docs', 'privacy')" class="text-sm font-medium text-zinc-400 hover:text-white transition-colors hidden sm:block" data-i18n="nav.privacy">隐私</button>
-                <button onclick="switchView('docs', 'overview')" class="text-sm font-medium text-zinc-400 hover:text-white transition-colors hidden sm:block" data-i18n="nav.docs">文档</button>
+            <!-- Desktop Navigation -->
+            <div class="hidden md:flex items-center gap-6">
+                <button onclick="handleNavClick('features')" class="text-sm font-medium text-zinc-400 hover:text-white transition-colors" data-i18n="nav.features">特性</button>
+                <button onclick="switchView('docs', 'privacy')" class="text-sm font-medium text-zinc-400 hover:text-white transition-colors" data-i18n="nav.privacy">隐私</button>
+                <button onclick="switchView('docs', 'overview')" class="text-sm font-medium text-zinc-400 hover:text-white transition-colors" data-i18n="nav.docs">文档</button>
                 <a href="https://github.com/yuqie6/WorkMirror" target="_blank" rel="noopener noreferrer" class="text-zinc-400 hover:text-white transition-colors">
                     <svg height="20" viewBox="0 0 16 16" width="20" fill="currentColor"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"></path></svg>
                 </a>
                 <button id="lang-switch" onclick="toggleLanguage()" class="px-2 py-1 text-sm text-zinc-400 hover:text-white transition-colors rounded hover:bg-zinc-800 font-medium">EN</button>
                 <a href="https://github.com/yuqie6/WorkMirror/releases" target="_blank" rel="noopener noreferrer" class="bg-white text-zinc-950 px-4 py-2 rounded font-medium text-sm hover:bg-zinc-200 transition-colors shadow-[0_0_15px_rgba(255,255,255,0.1)]" data-i18n="nav.download">下载 Windows 版</a>
+            </div>
+            <!-- Mobile Navigation -->
+            <div class="flex md:hidden items-center gap-3">
+                <button id="lang-switch-mobile" onclick="toggleLanguage()" class="px-2 py-1 text-sm text-zinc-400 hover:text-white transition-colors rounded hover:bg-zinc-800 font-medium">EN</button>
+                <button onclick="toggleMobileMenu()" id="mobile-menu-btn" class="text-zinc-400 hover:text-white transition-colors p-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <!-- Mobile Menu Dropdown -->
+        <div id="mobile-menu" class="hidden md:hidden border-t border-zinc-800 bg-zinc-950">
+            <div class="max-w-7xl mx-auto px-4 py-4 space-y-3">
+                <button onclick="handleNavClick('features'); toggleMobileMenu();" class="block w-full text-left px-3 py-2 text-sm font-medium text-zinc-400 hover:text-white hover:bg-zinc-900 rounded transition-colors" data-i18n="nav.features">特性</button>
+                <button onclick="switchView('docs', 'privacy'); toggleMobileMenu();" class="block w-full text-left px-3 py-2 text-sm font-medium text-zinc-400 hover:text-white hover:bg-zinc-900 rounded transition-colors" data-i18n="nav.privacy">隐私</button>
+                <button onclick="switchView('docs', 'overview'); toggleMobileMenu();" class="block w-full text-left px-3 py-2 text-sm font-medium text-zinc-400 hover:text-white hover:bg-zinc-900 rounded transition-colors" data-i18n="nav.docs">文档</button>
+                <a href="https://github.com/yuqie6/WorkMirror" target="_blank" rel="noopener noreferrer" class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-zinc-400 hover:text-white hover:bg-zinc-900 rounded transition-colors">
+                    <svg height="16" viewBox="0 0 16 16" width="16" fill="currentColor"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"></path></svg>
+                    <span>GitHub</span>
+                </a>
+                <a href="https://github.com/yuqie6/WorkMirror/releases" target="_blank" rel="noopener noreferrer" class="block text-center bg-white text-zinc-950 px-4 py-2.5 rounded font-medium text-sm hover:bg-zinc-200 transition-colors shadow-[0_0_15px_rgba(255,255,255,0.1)]" data-i18n="nav.download">下载 Windows 版</a>
             </div>
         </div>
     </nav>
@@ -82,27 +107,27 @@
     <!-- VIEW: HOME -->
     <main id="view-home" class="block">
         <!-- Hero Section -->
-        <section class="relative pt-32 pb-20 overflow-hidden">
+        <section class="relative pt-24 sm:pt-32 pb-12 sm:pb-20 overflow-hidden">
             <div class="absolute inset-0 z-0 opacity-10 bg-grid-pattern pointer-events-none"></div>
-            <div class="max-w-7xl mx-auto px-6 relative z-10 flex flex-col items-center text-center">
-                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 mb-8 animate-fade-in">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 relative z-10 flex flex-col items-center text-center">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 mb-6 sm:mb-8 animate-fade-in">
                     <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                     <span class="text-xs text-zinc-400 font-medium" data-i18n="hero.tagline">Local-first & Privacy by default</span>
                 </div>
-                <h1 class="text-5xl md:text-7xl font-bold text-white tracking-tight mb-6 max-w-4xl leading-tight animate-slide-up">
+                <h1 class="text-4xl sm:text-5xl md:text-7xl font-bold text-white tracking-tight mb-4 sm:mb-6 max-w-4xl leading-tight animate-slide-up px-2">
                     <span data-i18n="hero.title1">每天自动复盘你的工作</span><br>
                     <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400" data-i18n="hero.title2">一键生成日报</span>
                 </h1>
-                <p class="text-lg text-zinc-400 max-w-2xl mb-10 animate-slide-up" style="animation-delay: 0.1s;">
+                <p class="text-base sm:text-lg text-zinc-400 max-w-2xl mb-8 sm:mb-10 animate-slide-up px-4" style="animation-delay: 0.1s;">
                     <span data-i18n="hero.desc">复盘镜在后台自动记录你一天的工作痕迹，生成日报/周报与复盘总结。</span>
                     <span class="text-zinc-500" data-i18n="hero.desc2">减少手写记录与回忆成本；每条结论都能点开回溯到来源证据；默认本地、可离线。</span>
                 </p>
-                <div class="flex flex-col sm:flex-row gap-4 mb-20 animate-slide-up" style="animation-delay: 0.2s;">
-                    <a href="https://github.com/yuqie6/WorkMirror/releases" target="_blank" rel="noopener noreferrer" class="px-8 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition-all shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2 group">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="group-hover:translate-y-0.5 transition-transform"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-12 sm:mb-20 animate-slide-up w-full max-w-md sm:max-w-none px-4" style="animation-delay: 0.2s;">
+                    <a href="https://github.com/yuqie6/WorkMirror/releases" target="_blank" rel="noopener noreferrer" class="px-6 sm:px-8 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition-all shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2 group text-sm sm:text-base">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="group-hover:translate-y-0.5 transition-transform flex-shrink-0"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
                         <span data-i18n="hero.downloadBtn">下载 Windows 版（Releases）</span>
                     </a>
-                    <button onclick="switchView('docs', 'install')" class="px-8 py-3 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-300 rounded-lg font-medium transition-colors text-sm" data-i18n="hero.quickstart">3 分钟上手</button>
+                    <button onclick="switchView('docs', 'install')" class="px-6 sm:px-8 py-3 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-300 rounded-lg font-medium transition-colors text-sm sm:text-base" data-i18n="hero.quickstart">3 分钟上手</button>
                 </div>
 
                 <!-- Mockup -->
@@ -117,9 +142,9 @@
                         </div>
                         <div class="hidden sm:block text-zinc-600 text-xs">- □ x</div>
                     </div>
-                    <div class="grid grid-cols-12 h-[600px]">
+                    <div class="grid grid-cols-1 sm:grid-cols-12 min-h-[400px] sm:h-[600px]">
                         <!-- Sidebar -->
-                        <div class="col-span-2 border-r border-zinc-800 bg-zinc-950 p-4 flex flex-col justify-between">
+                        <div class="hidden sm:block sm:col-span-2 border-b sm:border-b-0 sm:border-r border-zinc-800 bg-zinc-950 p-4 flex flex-col justify-between">
                             <div class="space-y-1">
                                 <div class="flex items-center gap-3 px-3 py-2 bg-zinc-800/50 text-white rounded-md text-sm font-medium border border-zinc-700/50">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
@@ -159,29 +184,29 @@
                             </div>
                         </div>
                         <!-- Main Content -->
-                        <div class="col-span-10 bg-zinc-950 p-6 overflow-hidden">
-                            <div class="flex justify-between items-center mb-6">
-                                <h2 class="text-sm font-bold text-white" data-i18n="mockup.dashboardTitle">仪表盘</h2>
-                                <div class="flex gap-3">
-                                    <div class="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-500 font-mono flex items-center gap-2">
+                        <div class="col-span-1 sm:col-span-10 bg-zinc-950 p-4 sm:p-6 overflow-hidden">
+                            <div class="flex justify-between items-center mb-4 sm:mb-6">
+                                <h2 class="text-xs sm:text-sm font-bold text-white" data-i18n="mockup.dashboardTitle">仪表盘</h2>
+                                <div class="flex gap-2 sm:gap-3">
+                                    <div class="hidden sm:flex bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-500 font-mono items-center gap-2">
                                         <span data-i18n="mockup.searchEvidence">⌘K 搜索证据...</span>
                                     </div>
                                     <div class="w-6 h-6 rounded bg-indigo-500"></div>
                                 </div>
                             </div>
-                            <div class="grid grid-cols-3 gap-4 mb-4">
-                                <div class="bg-zinc-900/50 border border-zinc-800 rounded-lg p-5">
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-3 sm:mb-4">
+                                <div class="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4 sm:p-5">
                                     <div class="text-xs text-zinc-400 mb-2" data-i18n="mockup.todaySessions">今日工作片段</div>
                                     <div class="flex items-baseline gap-2 mb-2">
-                                        <span class="text-4xl font-bold text-white">57</span>
+                                        <span class="text-3xl sm:text-4xl font-bold text-white">57</span>
                                         <span class="text-xs text-zinc-500" data-i18n="mockup.thirtyDayTotal">/ 30天共 0</span>
                                     </div>
                                     <div class="text-xs text-zinc-500"><span data-i18n="mockup.thirtyDayChanges">30天代码变更</span>: 791 <span data-i18n="mockup.times">次</span></div>
                                 </div>
-                                <div class="bg-zinc-900/50 border border-zinc-800 rounded-lg p-5">
+                                <div class="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4 sm:p-5">
                                     <div class="text-xs text-zinc-400 mb-2" data-i18n="mockup.evidenceCoverage">证据覆盖率</div>
                                     <div class="flex items-baseline gap-2 mb-2">
-                                        <span class="text-4xl font-bold text-amber-500">61%</span>
+                                        <span class="text-3xl sm:text-4xl font-bold text-amber-500">61%</span>
                                         <span class="text-xs text-zinc-500" data-i18n="mockup.medium">中等</span>
                                     </div>
                                     <div class="text-xs text-amber-500 mb-2 flex items-center gap-1">
@@ -190,9 +215,9 @@
                                     </div>
                                     <div class="text-[10px] text-zinc-600">24h: 57 <span data-i18n="mockup.sessions2">片段</span> | <span data-i18n="mockup.withDiff">有Diff</span>: 35 | <span data-i18n="mockup.withBrowser">有浏览</span>: 0</div>
                                 </div>
-                                <div class="bg-zinc-900/50 border border-zinc-800 rounded-lg p-5 flex items-center gap-4">
-                                    <div class="relative w-16 h-16 rounded-full conic-gradient-chart flex items-center justify-center">
-                                        <div class="w-10 h-10 bg-zinc-900 rounded-full"></div>
+                                <div class="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4 sm:p-5 flex items-center gap-3 sm:gap-4">
+                                    <div class="relative w-14 h-14 sm:w-16 sm:h-16 rounded-full conic-gradient-chart flex items-center justify-center flex-shrink-0">
+                                        <div class="w-8 h-8 sm:w-10 sm:h-10 bg-zinc-900 rounded-full"></div>
                                     </div>
                                     <div class="space-y-1 text-[10px] text-zinc-400 flex-1">
                                         <div class="text-xs text-zinc-400 mb-1" data-i18n="mockup.focusDistribution">专注分布</div>
@@ -202,24 +227,24 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="w-full bg-gradient-to-r from-indigo-900/20 to-purple-900/10 border border-indigo-500/20 rounded-lg p-4 mb-4 flex items-center justify-between">
-                                <div class="flex items-center gap-4">
-                                    <div class="w-10 h-10 bg-indigo-500/20 rounded-lg flex items-center justify-center text-indigo-400">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/></svg>
+                            <div class="w-full bg-gradient-to-r from-indigo-900/20 to-purple-900/10 border border-indigo-500/20 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4 flex items-center justify-between">
+                                <div class="flex items-center gap-3 sm:gap-4">
+                                    <div class="w-8 h-8 sm:w-10 sm:h-10 bg-indigo-500/20 rounded-lg flex items-center justify-center text-indigo-400 flex-shrink-0">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sm:w-5 sm:h-5"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/></svg>
                                     </div>
                                     <div>
-                                        <h3 class="text-indigo-100 font-bold text-sm" data-i18n="mockup.dailySummaryReady">每日总结已生成</h3>
+                                        <h3 class="text-indigo-100 font-bold text-xs sm:text-sm" data-i18n="mockup.dailySummaryReady">每日总结已生成</h3>
                                         <p class="text-xs text-indigo-300/70" data-i18n="mockup.viewTodaySummary">查看今日自动生成的工作回顾</p>
                                     </div>
                                 </div>
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-indigo-400"><line x1="5" x2="19" y1="12" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-indigo-400 flex-shrink-0"><line x1="5" x2="19" y1="12" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
                             </div>
-                            <div class="bg-zinc-900/50 border border-zinc-800 rounded-lg p-5">
-                                <div class="flex justify-between items-end mb-4">
+                            <div class="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4 sm:p-5">
+                                <div class="flex justify-between items-end mb-3 sm:mb-4">
                                     <div class="text-xs text-zinc-400 font-bold" data-i18n="mockup.activityHeatmap">活动热力图</div>
                                     <div class="text-[10px] text-zinc-600" data-i18n="mockup.last30Days">最近 30 天</div>
                                 </div>
-                                <div class="flex gap-1.5 flex-wrap opacity-50" id="heatmap-boxes"></div>
+                                <div class="flex gap-1 sm:gap-1.5 flex-wrap opacity-50" id="heatmap-boxes"></div>
                                 <div class="flex justify-between text-[10px] text-zinc-600 mt-2">
                                     <span data-i18n="mockup.thirtyDaysAgo">30天前</span>
                                     <span data-i18n="mockup.today">今天</span>
@@ -232,67 +257,67 @@
         </section>
 
         <!-- Features Grid -->
-        <section id="features" class="py-24 bg-zinc-950 relative">
-            <div class="max-w-7xl mx-auto px-6">
-                <h2 class="text-3xl font-bold text-white mb-12 text-center"><span data-i18n="features.title1">把 </span><span class="text-indigo-500" data-i18n="features.title2">日报与复盘</span><span data-i18n="features.title3"> 写得有据可查</span></h2>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div class="bg-zinc-900 border border-zinc-800 p-8 rounded-xl hover:border-indigo-500/30 transition-colors group">
-                        <div class="w-12 h-12 bg-indigo-500/10 rounded-lg flex items-center justify-center mb-6 text-indigo-500 group-hover:scale-110 transition-transform">
+        <section id="features" class="py-16 sm:py-24 bg-zinc-950 relative">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6">
+                <h2 class="text-2xl sm:text-3xl font-bold text-white mb-8 sm:mb-12 text-center"><span data-i18n="features.title1">把 </span><span class="text-indigo-500" data-i18n="features.title2">日报与复盘</span><span data-i18n="features.title3"> 写得有据可查</span></h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+                    <div class="bg-zinc-900 border border-zinc-800 p-6 sm:p-8 rounded-xl hover:border-indigo-500/30 transition-colors group">
+                        <div class="w-12 h-12 bg-indigo-500/10 rounded-lg flex items-center justify-center mb-4 sm:mb-6 text-indigo-500 group-hover:scale-110 transition-transform">
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/></svg>
                         </div>
-                        <h3 class="text-xl font-bold text-white mb-3" data-i18n="feature1.title">自动日报/周报与复盘</h3>
-                        <p class="text-zinc-400 leading-relaxed" data-i18n="feature1.desc">不靠记忆拼凑"今天做了什么"。系统会把一天拆成多个工作片段并生成摘要，也支持按周/周期聚合回顾，帮助你快速回看投入、成果与变化。</p>
+                        <h3 class="text-lg sm:text-xl font-bold text-white mb-2 sm:mb-3" data-i18n="feature1.title">自动日报/周报与复盘</h3>
+                        <p class="text-sm sm:text-base text-zinc-400 leading-relaxed" data-i18n="feature1.desc">不靠记忆拼凑"今天做了什么"。系统会把一天拆成多个工作片段并生成摘要，也支持按周/周期聚合回顾，帮助你快速回看投入、成果与变化。</p>
                     </div>
-                    <div class="bg-zinc-900 border border-zinc-800 p-8 rounded-xl hover:border-emerald-500/30 transition-colors group">
-                        <div class="w-12 h-12 bg-emerald-500/10 rounded-lg flex items-center justify-center mb-6 text-emerald-500 group-hover:scale-110 transition-transform">
+                    <div class="bg-zinc-900 border border-zinc-800 p-6 sm:p-8 rounded-xl hover:border-emerald-500/30 transition-colors group">
+                        <div class="w-12 h-12 bg-emerald-500/10 rounded-lg flex items-center justify-center mb-4 sm:mb-6 text-emerald-500 group-hover:scale-110 transition-transform">
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                         </div>
-                        <h3 class="text-xl font-bold text-white mb-3" data-i18n="feature2.title">每条结论都能回溯</h3>
-                        <p class="text-zinc-400 leading-relaxed" data-i18n="feature2.desc">不是"凭感觉"的总结。你可以点开看到每个工作片段的证据覆盖率与明细（代码变更、窗口行为、浏览历史等），把复盘变得可验证。</p>
+                        <h3 class="text-lg sm:text-xl font-bold text-white mb-2 sm:mb-3" data-i18n="feature2.title">每条结论都能回溯</h3>
+                        <p class="text-sm sm:text-base text-zinc-400 leading-relaxed" data-i18n="feature2.desc">不是"凭感觉"的总结。你可以点开看到每个工作片段的证据覆盖率与明细（代码变更、窗口行为、浏览历史等），把复盘变得可验证。</p>
                     </div>
-                    <div class="bg-zinc-900 border border-zinc-800 p-8 rounded-xl hover:border-amber-500/30 transition-colors group">
-                        <div class="w-12 h-12 bg-amber-500/10 rounded-lg flex items-center justify-center mb-6 text-amber-500 group-hover:scale-110 transition-transform">
+                    <div class="bg-zinc-900 border border-zinc-800 p-6 sm:p-8 rounded-xl hover:border-amber-500/30 transition-colors group">
+                        <div class="w-12 h-12 bg-amber-500/10 rounded-lg flex items-center justify-center mb-4 sm:mb-6 text-amber-500 group-hover:scale-110 transition-transform">
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
                         </div>
-                        <h3 class="text-xl font-bold text-white mb-3" data-i18n="feature3.title">默认本地，离线也能用</h3>
-                        <p class="text-zinc-400 leading-relaxed" data-i18n="feature3.desc">所有数据默认写入本地 SQLite；本地服务仅监听 <span class="font-mono text-zinc-300">127.0.0.1</span>。不配 AI Key 也能生成规则版摘要；配置 AI 后再获得更强的语义化总结与建议。</p>
+                        <h3 class="text-lg sm:text-xl font-bold text-white mb-2 sm:mb-3" data-i18n="feature3.title">默认本地，离线也能用</h3>
+                        <p class="text-sm sm:text-base text-zinc-400 leading-relaxed" data-i18n="feature3.desc">所有数据默认写入本地 SQLite；本地服务仅监听 <span class="font-mono text-zinc-300">127.0.0.1</span>。不配 AI Key 也能生成规则版摘要；配置 AI 后再获得更强的语义化总结与建议。</p>
                     </div>
                 </div>
             </div>
         </section>
 
         <!-- Technical Specs -->
-        <section class="py-24 border-t border-zinc-900">
-            <div class="max-w-5xl mx-auto px-6">
-                <div class="flex flex-col md:flex-row gap-12 items-center">
-                    <div class="flex-1">
-                        <h2 class="text-3xl font-bold text-white mb-6"><span data-i18n="tech.title">为 </span><span class="font-mono text-indigo-400">Windows</span><span data-i18n="tech.titleSuffix"> 工程师打造</span></h2>
-                        <ul class="space-y-4">
-                            <li class="flex items-start gap-3">
-                                <span class="mt-1 text-emerald-500"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></span>
-                                <span class="text-zinc-300" data-i18n="tech1"><strong>系统托盘常驻:</strong> 极低资源占用，静默运行于后台。</span>
+        <section class="py-16 sm:py-24 border-t border-zinc-900">
+            <div class="max-w-5xl mx-auto px-4 sm:px-6">
+                <div class="flex flex-col md:flex-row gap-8 sm:gap-12 items-center">
+                    <div class="flex-1 w-full">
+                        <h2 class="text-2xl sm:text-3xl font-bold text-white mb-4 sm:mb-6"><span data-i18n="tech.title">为 </span><span class="font-mono text-indigo-400">Windows</span><span data-i18n="tech.titleSuffix"> 工程师打造</span></h2>
+                        <ul class="space-y-3 sm:space-y-4">
+                            <li class="flex items-start gap-2 sm:gap-3">
+                                <span class="mt-1 text-emerald-500 flex-shrink-0"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></span>
+                                <span class="text-sm sm:text-base text-zinc-300" data-i18n="tech1"><strong>系统托盘常驻:</strong> 极低资源占用，静默运行于后台。</span>
                             </li>
-                            <li class="flex items-start gap-3">
-                                <span class="mt-1 text-emerald-500"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></span>
-                                <span class="text-zinc-300" data-i18n="tech2"><strong>Git Diff 采集:</strong> 监听你配置的项目目录，捕获保存到磁盘的变更（无需 Commit）。</span>
+                            <li class="flex items-start gap-2 sm:gap-3">
+                                <span class="mt-1 text-emerald-500 flex-shrink-0"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></span>
+                                <span class="text-sm sm:text-base text-zinc-300" data-i18n="tech2"><strong>Git Diff 采集:</strong> 监听你配置的项目目录，捕获保存到磁盘的变更（无需 Commit）。</span>
                             </li>
-                            <li class="flex items-start gap-3">
-                                <span class="mt-1 text-emerald-500"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></span>
-                                <span class="text-zinc-300" data-i18n="tech3"><strong>本地 API + SSE:</strong> 内置本地 HTTP Server（随机端口），UI 与状态页实时刷新，便于二次集成。</span>
+                            <li class="flex items-start gap-2 sm:gap-3">
+                                <span class="mt-1 text-emerald-500 flex-shrink-0"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></span>
+                                <span class="text-sm sm:text-base text-zinc-300" data-i18n="tech3"><strong>本地 API + SSE:</strong> 内置本地 HTTP Server（随机端口），UI 与状态页实时刷新，便于二次集成。</span>
                             </li>
-                            <li class="flex items-start gap-3">
-                                <span class="mt-1 text-emerald-500"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></span>
-                                <span class="text-zinc-300" data-i18n="tech4"><strong>拒绝沉默失败:</strong> 内置状态页与诊断包导出，空态/异常会告诉你缺口在哪一层，以及下一步怎么修。</span>
+                            <li class="flex items-start gap-2 sm:gap-3">
+                                <span class="mt-1 text-emerald-500 flex-shrink-0"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></span>
+                                <span class="text-sm sm:text-base text-zinc-300" data-i18n="tech4"><strong>拒绝沉默失败:</strong> 内置状态页与诊断包导出，空态/异常会告诉你缺口在哪一层，以及下一步怎么修。</span>
                             </li>
                         </ul>
                     </div>
-                    <div class="flex-1 bg-zinc-900 p-6 rounded-xl border border-zinc-800 font-mono text-xs text-zinc-400 overflow-hidden shadow-2xl">
+                    <div class="flex-1 w-full bg-zinc-900 p-4 sm:p-6 rounded-xl border border-zinc-800 font-mono text-xs sm:text-xs text-zinc-400 overflow-x-auto shadow-2xl">
                         <div class="flex gap-2 mb-4 border-b border-zinc-800 pb-2">
                             <span class="text-rose-500">●</span>
                             <span class="text-amber-500">●</span>
                             <span class="text-emerald-500">●</span>
                         </div>
-                        <pre><span class="text-purple-400">const</span> <span class="text-blue-400">projectMirror</span> = {
+                        <pre class="text-[11px] sm:text-xs"><span class="text-purple-400">const</span> <span class="text-blue-400">projectMirror</span> = {
   <span class="text-zinc-200">version</span>: <span class="text-emerald-400">"0.x"</span>,
   <span class="text-zinc-200">platform</span>: <span class="text-emerald-400">"win32"</span>,
   <span class="text-zinc-200">collectors</span>: [
@@ -358,8 +383,8 @@
     </main>
 
     <!-- Footer -->
-    <footer class="bg-zinc-950 border-t border-zinc-900 py-12">
-        <div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
+    <footer class="bg-zinc-950 border-t border-zinc-900 py-8 sm:py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col md:flex-row justify-between items-center gap-4 sm:gap-6">
             <div class="flex items-center gap-2">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" class="text-zinc-500">
                     <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2L3.33975 7V17L12 22L20.6603 17V7L12 2ZM4.83975 8.13397L12 4L19.1603 8.13397V15.866L12 20L4.83975 15.866V8.13397Z" opacity="0.8"/>
@@ -368,8 +393,8 @@
                 </svg>
                 <span class="font-bold text-zinc-500" data-i18n="footer.brand">复盘镜</span>
             </div>
-            <div class="text-sm text-zinc-500" data-i18n="footer.copyright">&copy; 2025 复盘镜（WorkMirror）. Built for Engineers.</div>
-            <div class="flex gap-6">
+            <div class="text-xs sm:text-sm text-zinc-500 text-center" data-i18n="footer.copyright">&copy; 2025 复盘镜（WorkMirror）. Built for Engineers.</div>
+            <div class="flex flex-wrap justify-center gap-4 sm:gap-6 text-sm">
                 <a href="#" onclick="switchView('docs', 'overview')" class="text-zinc-500 hover:text-white transition-colors" data-i18n="footer.docs">Documentation</a>
                 <a href="https://github.com/yuqie6/WorkMirror" target="_blank" rel="noopener noreferrer" class="text-zinc-500 hover:text-white transition-colors">GitHub</a>
                 <a href="#" onclick="switchView('docs', 'privacy')" class="text-zinc-500 hover:text-white transition-colors" data-i18n="footer.privacy">Privacy Policy</a>
@@ -387,7 +412,7 @@
             if (heatmap) {
                 for (let i = 0; i < 30; i++) {
                     const box = document.createElement('div');
-                    box.className = 'w-4 h-4 rounded-sm bg-zinc-800';
+                    box.className = 'w-3 h-3 sm:w-4 sm:h-4 rounded-sm bg-zinc-800';
                     heatmap.appendChild(box);
                 }
             }

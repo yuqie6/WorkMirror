@@ -6,6 +6,14 @@ let currentDocId = 'install';
 // Cache for loaded documents
 const docCache = {};
 
+// Mobile menu toggle
+function toggleMobileMenu() {
+    const menu = document.getElementById('mobile-menu');
+    if (menu) {
+        menu.classList.toggle('hidden');
+    }
+}
+
 // 更新 URL 参数（不刷新页面）
 function updateUrlParams(params) {
     const url = new URL(window.location);

@@ -201,7 +201,10 @@ function toggleLanguage() {
 
 function updateLangSwitch() {
     const btn = document.getElementById('lang-switch');
-    if (btn) btn.textContent = currentLang === 'zh' ? 'EN' : '中';
+    const btnMobile = document.getElementById('lang-switch-mobile');
+    const text = currentLang === 'zh' ? 'EN' : '中';
+    if (btn) btn.textContent = text;
+    if (btnMobile) btnMobile.textContent = text;
 }
 
 function applyTranslations() {

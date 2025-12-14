@@ -6,6 +6,14 @@
 ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
 
+/* Mobile-friendly touch targets */
+@media (max-width: 640px) {
+    button, a {
+        min-height: 44px;
+        min-width: 44px;
+    }
+}
+
 /* Grid Pattern Background */
 .bg-grid-pattern {
     background-image: linear-gradient(to right, #27272a 1px, transparent 1px),
