@@ -31,26 +31,16 @@ WorkMirror runs silently in your Windows system tray, recording your work traces
 
 Download from Releases: <https://github.com/yuqie6/WorkMirror/releases>
 
-## Build & Distribution (Windows)
+## Download & Run (Windows)
 
-`cmd/workmirror-agent/` supports Windows builds only.
+Recommended zip "portable folder distribution": unzip into a fixed folder (e.g. `WorkMirror/`) and run `workmirror.exe` inside that folder.
+First run auto-generates `./config/`, `./data/`, and `./logs/`; when migrating/backing up, move the whole folder to avoid leaving data behind in your Downloads directory.
 
-Recommended "portable distribution" (one `workmirror.exe` + `config/` and `data/` in the same directory). First run auto-generates `./config/config.yaml` and `./data/`.
-
-In PowerShell:
-
-```powershell
-go build -trimpath -ldflags "-H=windowsgui -s -w" -o .\workmirror.exe .\cmd\workmirror-agent\
-```
-
-Notes:
-
-- Builds as GUI subsystem (no visible console window).
-- After Agent starts, tray menu "Open Panel" opens local UI in app-mode window (built-in and served by Agent).
+After startup, it minimizes to system tray: right-click tray icon → "Open Panel". You can also read `.\data\http_base_url.txt` and open the local UI in your browser.
 
 ## Running & Data Locations
 
-- Run: Double-click `workmirror.exe`, or execute `.\workmirror.exe` in terminal
+- Run: Double-click `workmirror.exe`
 - UI: Tray → Open Panel; or read `.\data\http_base_url.txt` and open in browser (e.g., `http://127.0.0.1:12345/`)
 - Default database: `.\data\workmirror.db`
 - Port discovery: `.\data\http_base_url.txt`
@@ -72,20 +62,9 @@ diff:
 AI Keys should be injected via environment variables (avoid writing to disk), e.g., `DEEPSEEK_API_KEY`, `SILICONFLOW_API_KEY` (see `config/config.yaml.example`).
 Disable `browser.enabled` in config if you don't want browser history collection.
 
-## Frontend Development (UI)
+## For Developers
 
-Frontend source in `frontend/`, recommended dev workflow:
-
-```powershell
-# Start agent first; port is auto-assigned and written to .\data\http_base_url.txt
-$pwd.Path
-Set-Location ".\frontend"
-$env:VITE_API_TARGET = Get-Content "..\data\http_base_url.txt"
-pnpm install
-pnpm dev
-```
-
-For release, build frontend to `frontend/dist/`; to embed UI assets in single binary, copy `dist/` to `internal/uiassets/dist/` then recompile agent (this directory is generated, not recommended for commit).
+Build/dev/packaging notes: `docs/development.md`.
 
 ## Troubleshooting (Start Here)
 

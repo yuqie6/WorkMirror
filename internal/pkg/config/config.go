@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/spf13/viper"
+	"github.com/yuqie6/WorkMirror/internal/pkg/buildinfo"
 )
 
 // Config 应用配置
@@ -129,6 +130,9 @@ func Load(configPath string) (*Config, error) {
 		return nil, fmt.Errorf("解析配置失败: %w", err)
 	}
 
+	// 版本信息以二进制构建信息为准，避免配置文件/前端文案与实际版本不一致。
+	cfg.App.Version = buildinfo.Version
+
 	// 处理环境变量占位符
 	cfg.AI.DeepSeek.APIKey = expandEnv(cfg.AI.DeepSeek.APIKey)
 	cfg.AI.SiliconFlow.APIKey = expandEnv(cfg.AI.SiliconFlow.APIKey)
@@ -153,7 +157,7 @@ func Default() *Config {
 func setDefaults(v *viper.Viper) {
 	// App
 	v.SetDefault("app.name", "workmirror-agent")
-	v.SetDefault("app.version", "0.1.0")
+	v.SetDefault("app.version", buildinfo.Version)
 	v.SetDefault("app.log_level", "info")
 	v.SetDefault("app.log_path", "./logs/workmirror.log")
 	v.SetDefault("app.language", "zh") // 默认中文，支持 zh/en

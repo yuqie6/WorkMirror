@@ -28,7 +28,7 @@
   },
   "app": {
     "name": "WorkMirror",
-    "version": "v0.2-alpha"
+    "version": "v0.2.0-alpha.1"
   },
   "systemHealth": {
     "title": "System Health",

@@ -6,9 +6,7 @@
     <p>复盘镜是一个 Windows 托盘常驻 Agent + 本地 Web UI。目标是让新用户在 <strong>10 分钟</strong>完成闭环：配置 watch paths → 看到当天会话 → 能点开证据。</p>
 
     <h2>1. 获取程序</h2>
-    <p>推荐从 GitHub Releases 下载 Windows 版本；或从源码构建（需 Go 1.25.4，且仅支持 Windows 构建）。</p>
-    <pre>go build -trimpath -ldflags "-H=windowsgui -s -w" -o .\workmirror.exe .\cmd\workmirror-agent\</pre>
-    <p>说明：上述命令会构建为 GUI 子系统，运行时不会弹出前台控制台窗口。</p>
+    <p>推荐从 GitHub Releases 下载 Windows 版本（zip 便携目录）。下载后请先解压到你会长期保留的位置（避免直接在“下载”目录内运行）。</p>
 
     <h2>2. 初始化</h2>
     <p>首次运行后，复盘镜会最小化到系统托盘。右键点击图标选择 <strong>"打开面板"</strong>。</p>
@@ -17,10 +15,13 @@
         <li>本地 HTTP：只监听 <code>127.0.0.1</code>，端口为随机分配</li>
         <li>端口发现：启动后写入 <code>./data/http_base_url.txt</code></li>
     </ul>
-    <p>推荐"便携分发"：一个 <code>workmirror.exe</code> + 同目录 <code>config/</code> 与 <code>data/</code>。</p>
+    <p>推荐 zip“便携目录分发”：解压后得到一个固定目录（例如 <code>WorkMirror/</code>），在该目录内运行 <code>workmirror.exe</code>。首次启动会自动生成 <code>config/</code>、<code>data/</code>、<code>logs/</code>；迁移/备份时请移动整个目录，避免只移动 exe 导致数据留在下载目录。</p>
 
     <h2>3. 配置监听目录</h2>
     <p>为了让 Diff Collector 生效，你需要在设置页添加你的 Git 项目目录（watch paths）：</p>
     <pre>C:\Users\Dev\Projects\Go-Backend</pre>
     <p>可选：启用浏览器采集（自动探测 Chrome/Edge History 路径），并保持隐私脱敏默认开启。</p>
+
+    <h2>（可选）从源码构建</h2>
+    <p>仅推荐给开发者：源码构建说明请查看 GitHub 仓库的 README。</p>
 </article>

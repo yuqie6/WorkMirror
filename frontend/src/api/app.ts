@@ -28,6 +28,17 @@ export async function GetStatus(): Promise<any> {
     return requestJSON("/api/status");
 }
 
+export type HealthDTO = {
+    ok: boolean;
+    name: string;
+    version: string;
+    started_at: string;
+};
+
+export async function GetHealth(): Promise<HealthDTO> {
+    return requestJSON("/api/health");
+}
+
 export async function GetTodaySummary(force?: boolean): Promise<any> {
     if (force) {
         return requestJSON("/api/summary/today?force=1");

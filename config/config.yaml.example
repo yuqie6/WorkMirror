@@ -2,10 +2,10 @@
 
 app:
   name: "workmirror-agent"
-  version: "0.1.0"
+  version: "v0.2.0-alpha.1"
   log_level: "info" # debug, info, warn, error
   language: "zh" # 语言偏好：zh (中文) / en (English)，影响 AI prompt 和报告生成语言
-  # 日志落盘路径（默认会写入用户目录，无需管理员权限）；相对路径以可执行文件目录为基准。
+  # 日志落盘路径（默认写入程序目录下 ./logs/）；相对路径以可执行文件目录为基准。
   # 如需仅输出到 stdout，请不要配置该字段。
   # log_path: "./logs/mirror.log"
 
@@ -47,8 +47,7 @@ browser:
 
 # 存储配置
 storage:
-  # 建议：安装版默认会将 DB 放在用户目录（无需管理员权限）；
-  # 如需自定义，可改成绝对路径或相对路径（相对路径以可执行文件目录为基准）。
+  # 便携目录分发建议保持默认：DB 跟随程序目录（相对路径以可执行文件目录为基准）。
   db_path: "./data/workmirror.db"
 
 # AI API 配置

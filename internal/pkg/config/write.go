@@ -35,6 +35,7 @@ func WriteFile(path string, cfg *Config) error {
 			"version":   cfg.App.Version,
 			"log_level": cfg.App.LogLevel,
 			"log_path":  cfg.App.LogPath,
+			"language":  cfg.App.Language,
 		},
 		"collector": map[string]any{
 			"poll_interval_ms":   cfg.Collector.PollIntervalMs,

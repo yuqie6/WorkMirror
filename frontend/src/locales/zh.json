@@ -28,7 +28,7 @@
   },
   "app": {
     "name": "复盘镜",
-    "version": "v0.2-alpha"
+    "version": "v0.2.0-alpha.1"
   },
   "systemHealth": {
     "title": "系统健康",

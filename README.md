@@ -35,27 +35,17 @@
 
 推荐直接下载 Releases：<https://github.com/yuqie6/WorkMirror/releases>
 
-## 构建与分发（Windows）
+## 下载与运行（Windows）
 
-`cmd/workmirror-agent/` 仅支持 Windows 构建。
+推荐 zip “便携目录分发”：解压后得到一个固定目录（例如 `WorkMirror/`），在该目录内运行 `workmirror.exe`。
+首次启动会自动生成 `./config/`、`./data/`、`./logs/`；迁移/备份时请移动整个目录，避免只移动 exe 导致“数据丢在下载目录”。
 
-推荐“便携分发”（一个 `workmirror.exe` + 同目录 `config/` 与 `data/`）。首次启动会自动生成 `./config/config.yaml` 与 `./data/`。
-
-在 PowerShell 执行：
-
-```powershell
-go build -trimpath -ldflags "-H=windowsgui -s -w" -o .\workmirror.exe .\cmd\workmirror-agent\
-```
-
-说明：
-
-- 上述命令会构建为 GUI 子系统（不会弹出前台控制台窗口）。
-- Agent 启动后托盘菜单“打开面板”会以 app-mode 窗口打开本地 UI（由 Agent 内置并服务）。
+运行后会最小化到系统托盘：右键图标 → “打开面板”。也可读取 `.\data\http_base_url.txt` 在浏览器打开本地 UI。
 
 ## 运行与数据位置
 
-- 运行：双击 `workmirror.exe`，或在终端执行 `.\workmirror.exe`
-- UI：托盘 → 打开面板；也可读取 `.\data\http_base_url.txt` 后在浏览器打开（例如 `http://127.0.0.1:12345/`）
+- 运行：双击 `workmirror.exe`
+- UI：托盘 → 打开面板；或读取 `.\data\http_base_url.txt` 后在浏览器打开（例如 `http://127.0.0.1:12345/`）
 - 默认数据库：`.\data\workmirror.db`
 - 端口发现：`.\data\http_base_url.txt`
 
@@ -76,20 +66,9 @@ diff:
 AI Key 建议通过环境变量注入（避免写入磁盘），例如 `DEEPSEEK_API_KEY`、`SILICONFLOW_API_KEY`（详见 `config/config.yaml.example`）。
 如不希望采集浏览历史，可在配置中关闭 `browser.enabled`。
 
-## 前端开发（UI）
+## 开发者
 
-前端源码位于 `frontend/`，开发调试建议：
-
-```powershell
-# 启动 agent 后，端口为自动分配；agent 会把地址写到 .\data\http_base_url.txt
-$pwd.Path
-Set-Location ".\\frontend"
-$env:VITE_API_TARGET = Get-Content "..\\data\\http_base_url.txt"
-pnpm install
-pnpm dev
-```
-
-发布时将前端构建产物写入 `frontend/dist/`；如需将 UI 静态资源内置到单个二进制中，可将 `dist/` 写入 `internal/uiassets/dist/` 后重新编译 agent（该目录为生成产物，不建议提交）。
+从源码构建/前端开发/打包脚本见 `docs/development.md`。
 
 ## 排障（推荐从这里开始）
 

@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import {
   LayoutDashboard,
   History,
@@ -7,6 +7,7 @@ import {
   Activity,
   Settings,
 } from 'lucide-react';
+import { GetHealth } from '@/api/app';
 import { cn } from '@/lib/utils';
 import { StatusDot, StatusType } from '@/components/common/StatusDot';
 import { LanguageSwitch } from '@/components/common/LanguageSwitch';
@@ -54,6 +55,20 @@ export default function MainLayout({
   systemIndicator,
 }: MainLayoutProps) {
   const { t } = useTranslation();
+  const [appVersion, setAppVersion] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    GetHealth()
+      .then((h) => {
+        if (cancelled) return;
+        if (h?.version) setAppVersion(h.version);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <div className="flex h-screen bg-zinc-950 text-zinc-200 font-sans overflow-hidden selection:bg-indigo-500/30">
@@ -65,7 +80,7 @@ export default function MainLayout({
             <span className="w-2 h-6 bg-indigo-500 rounded-sm"></span>
             {t('app.name')}
           </h1>
-          <p className="text-xs text-zinc-500 mt-1 font-mono">{t('app.version')}</p>
+          <p className="text-xs text-zinc-500 mt-1 font-mono">{appVersion ?? t('app.version')}</p>
         </div>
 
         {/* Navigation */}
@@ -157,4 +172,3 @@ export default function MainLayout({
     </div>
   );
 }
-

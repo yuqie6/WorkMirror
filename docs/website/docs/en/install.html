@@ -6,9 +6,7 @@
     <p>WorkMirror is a Windows system tray resident Agent + local Web UI. The goal is to let new users complete the loop in <strong>10 minutes</strong>: configure watch paths → see today's sessions → click to view evidence.</p>
 
     <h2>1. Get the Program</h2>
-    <p>Recommended to download from GitHub Releases; or build from source (requires Go 1.25.4, Windows only).</p>
-    <pre>go build -trimpath -ldflags "-H=windowsgui -s -w" -o .\workmirror.exe .\cmd\workmirror-agent\</pre>
-    <p>Note: The above command builds as GUI subsystem, no foreground console window will pop up when running.</p>
+    <p>Recommended to download the Windows release from GitHub Releases (zip portable folder). After downloading, unzip to a location you will keep (avoid running directly from Downloads).</p>
 
     <h2>2. Initialization</h2>
     <p>After first run, WorkMirror minimizes to system tray. Right-click the icon and select <strong>"Open Panel"</strong>.</p>
@@ -17,10 +15,13 @@
         <li>Local HTTP: Only listens on <code>127.0.0.1</code>, randomly assigned port</li>
         <li>Port discovery: Written to <code>./data/http_base_url.txt</code> on startup</li>
     </ul>
-    <p>Recommended "portable distribution": One <code>workmirror.exe</code> + <code>config/</code> and <code>data/</code> in the same directory.</p>
+    <p>Recommended zip "portable folder distribution": unzip into a fixed folder (e.g. <code>WorkMirror/</code>) and run <code>workmirror.exe</code> inside that folder. First run auto-generates <code>config/</code>, <code>data/</code>, <code>logs/</code>; move the whole folder when migrating/backing up to avoid leaving data behind in Downloads.</p>
 
     <h2>3. Configure Watch Directories</h2>
     <p>To enable Diff Collector, add your Git project directories (watch paths) in the settings page:</p>
     <pre>C:\Users\Dev\Projects\Go-Backend</pre>
     <p>Optional: Enable browser collection (auto-detect Chrome/Edge History path), and keep privacy desensitization enabled by default.</p>
+
+    <h2>(Optional) Build from Source</h2>
+    <p>For developers only: see the GitHub repository README for build instructions.</p>
 </article>
