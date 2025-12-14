@@ -165,11 +165,29 @@ const translations = {
     }
 };
 
-let currentLang = localStorage.getItem('workmirror-site-lang') || 'zh';
+// 优先从 URL 参数读取语言，其次 localStorage，默认中文
+function getInitialLang() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlLang = urlParams.get('lang');
+    if (urlLang === 'en' || urlLang === 'zh') {
+        return urlLang;
+    }
+    return localStorage.getItem('workmirror-site-lang') || 'zh';
+}
+
+let currentLang = getInitialLang();
+
+// 更新 URL 参数（不刷新页面）
+function updateUrlLang(lang) {
+    const url = new URL(window.location);
+    url.searchParams.set('lang', lang);
+    window.history.replaceState({}, '', url);
+}
 
 function toggleLanguage() {
     currentLang = currentLang === 'zh' ? 'en' : 'zh';
     localStorage.setItem('workmirror-site-lang', currentLang);
+    updateUrlLang(currentLang);
     applyTranslations();
     updateLangSwitch();
     // Clear doc cache and refresh current doc view if in docs view
@@ -209,6 +227,8 @@ function getCurrentLang() {
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
+    // 确保 URL 上有 lang 参数
+    updateUrlLang(currentLang);
     updateLangSwitch();
     applyTranslations();
 });

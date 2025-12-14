@@ -6,6 +6,19 @@ let currentDocId = 'install';
 // Cache for loaded documents
 const docCache = {};
 
+// 更新 URL 参数（不刷新页面）
+function updateUrlParams(params) {
+    const url = new URL(window.location);
+    Object.entries(params).forEach(([key, value]) => {
+        if (value) {
+            url.searchParams.set(key, value);
+        } else {
+            url.searchParams.delete(key);
+        }
+    });
+    window.history.replaceState({}, '', url);
+}
+
 // Simple View Router
 function switchView(viewName, docId = null) {
     // 1. Handle View Toggling
@@ -24,7 +37,12 @@ function switchView(viewName, docId = null) {
     // 2. Handle Scroll Reset
     window.scrollTo(0, 0);
 
-    // 3. If switching to docs, optional deep link
+    // 3. Update URL params
+    if (viewName === 'home') {
+        updateUrlParams({ doc: null });
+    }
+
+    // 4. If switching to docs, optional deep link
     if (viewName === 'docs' && docId) {
         showDoc(docId);
     }
@@ -77,6 +95,9 @@ async function loadDocContent(docId, lang) {
 async function showDoc(docId) {
     currentDocId = docId;
 
+    // Update URL params
+    updateUrlParams({ doc: docId });
+
     const container = document.getElementById('doc-container');
     const lang = typeof getCurrentLang === 'function' ? getCurrentLang() : 'zh';
 
@@ -106,3 +127,19 @@ function getCurrentDocId() {
 function clearDocCache() {
     Object.keys(docCache).forEach(key => delete docCache[key]);
 }
+
+// 从 URL 参数恢复页面状态
+function initFromUrl() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const docId = urlParams.get('doc');
+
+    // 有效的文档 ID 列表
+    const validDocs = ['overview', 'architecture', 'install', 'config', 'api', 'faq', 'privacy', 'terms'];
+
+    if (docId && validDocs.includes(docId)) {
+        switchView('docs', docId);
+    }
+}
+
+// 页面加载时初始化
+document.addEventListener('DOMContentLoaded', initFromUrl);
