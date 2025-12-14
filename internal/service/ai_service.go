@@ -23,6 +23,12 @@ type AIService struct {
 	summaryRepo  SummaryRepository
 	skillService *SkillService
 	ragService   RAGQuerier // 可选，用于查询历史记忆/索引
+
+	lastCallAt     atomic.Int64
+	lastErrorAt    atomic.Int64
+	lastErrorMsg   atomic.Value // string
+	degraded       atomic.Bool
+	degradedReason atomic.Value // string
 }
 
 type DailySummaryOptions struct {
@@ -53,8 +59,15 @@ func (s *AIService) SetRAGService(ragService RAGQuerier) {
 
 // AnalyzePendingDiffs 分析待处理的 Diff（使用 Worker Pool）
 func (s *AIService) AnalyzePendingDiffs(ctx context.Context, limit int) (int, error) {
+	s.lastCallAt.Store(time.Now().UnixMilli())
+	if s.analyzer == nil {
+		s.degraded.Store(true)
+		s.degradedReason.Store("not_configured")
+		return 0, nil
+	}
 	diffs, err := s.diffRepo.GetPendingAIAnalysis(ctx, limit)
 	if err != nil {
+		s.noteError(err, "get_pending_diffs_failed")
 		return 0, err
 	}
 
@@ -175,6 +188,7 @@ func (s *AIService) getSkillInfoList(ctx context.Context) []ai.SkillInfo {
 }
 
 func (s *AIService) GenerateDailySummaryWithOptions(ctx context.Context, date string, opts DailySummaryOptions) (*schema.DailySummary, error) {
+	s.lastCallAt.Store(time.Now().UnixMilli())
 	// 尝试获取缓存
 	cached, err := s.summaryRepo.GetByDate(ctx, date)
 	if err != nil {
@@ -260,9 +274,22 @@ func (s *AIService) GenerateDailySummaryWithOptions(ctx context.Context, date st
 		})
 	}
 
+	// 离线模式：不触发任何 AI 调用，直接走规则总结（保证“无 Key 也可用”且不产生噪音错误日志）。
+	if s.analyzer == nil {
+		s.degraded.Store(true)
+		s.degradedReason.Store("not_configured")
+		summary := buildRuleBasedDailySummary(date, diffs, appStats)
+		if upsertErr := s.summaryRepo.Upsert(ctx, summary); upsertErr != nil {
+			s.noteError(upsertErr, "upsert_daily_summary_failed")
+			return nil, upsertErr
+		}
+		return summary, nil
+	}
+
 	// 生成总结
 	result, err := s.analyzer.GenerateDailySummary(ctx, req)
 	if err != nil {
+		s.noteError(err, "generate_daily_summary_failed")
 		// 如果生成失败但有缓存，返回缓存
 		if cached != nil {
 			slog.Error("生成总结失败，降级返回缓存", "error", err)
@@ -295,6 +322,7 @@ func (s *AIService) GenerateDailySummaryWithOptions(ctx context.Context, date st
 	}
 
 	if err := s.summaryRepo.Upsert(ctx, summary); err != nil {
+		s.noteError(err, "upsert_daily_summary_failed")
 		return nil, err
 	}
 
@@ -315,11 +343,17 @@ func (s *AIService) GenerateDailySummary(ctx context.Context, date string) (*sch
 
 // GenerateWeeklySummary 生成周报（代理到 analyzer）
 func (s *AIService) GenerateWeeklySummary(ctx context.Context, req *ai.WeeklySummaryRequest) (*ai.WeeklySummaryResult, error) {
+	if s.analyzer == nil {
+		s.degraded.Store(true)
+		s.degradedReason.Store("not_configured")
+		return nil, fmt.Errorf("AI 未配置")
+	}
 	return s.analyzer.GenerateWeeklySummary(ctx, req)
 }
 
 // GeneratePeriodSummary 生成阶段汇总（周/月）
 func (s *AIService) GeneratePeriodSummary(ctx context.Context, periodType, startDate, endDate string, summaries []schema.DailySummary) (*ai.WeeklySummaryResult, error) {
+	s.lastCallAt.Store(time.Now().UnixMilli())
 	req := &ai.WeeklySummaryRequest{
 		PeriodType: periodType,
 		StartDate:  startDate,
@@ -337,12 +371,59 @@ func (s *AIService) GeneratePeriodSummary(ctx context.Context, periodType, start
 		req.TotalDiffs += sum.TotalDiffs
 	}
 
+	if s.analyzer == nil {
+		s.degraded.Store(true)
+		s.degradedReason.Store("not_configured")
+		return buildRuleBasedPeriodSummary(req), nil
+	}
+
 	res, err := s.analyzer.GenerateWeeklySummary(ctx, req)
 	if err == nil && res != nil {
+		s.degraded.Store(false)
 		return res, nil
+	}
+	if err != nil {
+		s.noteError(err, "generate_period_summary_failed")
 	}
 	slog.Warn("AI 阶段汇总不可用，使用规则汇总降级", "type", periodType, "start", startDate, "end", endDate, "error", err)
 	return buildRuleBasedPeriodSummary(req), nil
+}
+
+type AIServiceStats struct {
+	LastCallAt     int64  `json:"last_call_at"`
+	LastErrorAt    int64  `json:"last_error_at"`
+	LastError      string `json:"last_error"`
+	Degraded       bool   `json:"degraded"`
+	DegradedReason string `json:"degraded_reason"`
+}
+
+func (s *AIService) Stats() AIServiceStats {
+	if s == nil {
+		return AIServiceStats{}
+	}
+	rawErr := s.lastErrorMsg.Load()
+	lastErr, _ := rawErr.(string)
+	rawReason := s.degradedReason.Load()
+	reason, _ := rawReason.(string)
+	return AIServiceStats{
+		LastCallAt:     s.lastCallAt.Load(),
+		LastErrorAt:    s.lastErrorAt.Load(),
+		LastError:      lastErr,
+		Degraded:       s.degraded.Load(),
+		DegradedReason: reason,
+	}
+}
+
+func (s *AIService) noteError(err error, reason string) {
+	if s == nil || err == nil {
+		return
+	}
+	s.lastErrorAt.Store(time.Now().UnixMilli())
+	s.lastErrorMsg.Store(err.Error())
+	if strings.TrimSpace(reason) != "" {
+		s.degradedReason.Store(reason)
+	}
+	s.degraded.Store(true)
 }
 
 func buildRuleBasedDailySummary(date string, diffs []schema.Diff, appStats []repository.AppStat) *schema.DailySummary {

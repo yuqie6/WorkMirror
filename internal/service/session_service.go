@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"sort"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/yuqie6/mirror/internal/schema"
@@ -19,6 +20,11 @@ type SessionService struct {
 	sessionRepo     SessionRepository
 	sessionDiffRepo SessionDiffRepository
 	cfg             *SessionServiceConfig
+
+	lastSplitAt  atomic.Int64
+	splitErrors  atomic.Int64
+	lastErrorAt  atomic.Int64
+	lastErrorMsg atomic.Value // string
 }
 
 // SessionServiceConfig 会话服务配置
@@ -55,6 +61,7 @@ func NewSessionService(
 func (s *SessionService) BuildSessionsIncremental(ctx context.Context) (int, error) {
 	last, err := s.sessionRepo.GetLastSession(ctx)
 	if err != nil {
+		s.noteError(err)
 		return 0, err
 	}
 	start := int64(0)
@@ -65,7 +72,15 @@ func (s *SessionService) BuildSessionsIncremental(ctx context.Context) (int, err
 		start = time.Now().Add(-24 * time.Hour).UnixMilli()
 	}
 	end := time.Now().UnixMilli()
-	return s.BuildSessionsForRange(ctx, start, end)
+	created, buildErr := s.BuildSessionsForRange(ctx, start, end)
+	if buildErr != nil {
+		s.noteError(buildErr)
+		return 0, buildErr
+	}
+	if created > 0 {
+		s.lastSplitAt.Store(time.Now().UnixMilli())
+	}
+	return created, nil
 }
 
 // BuildSessionsForDate 按日期全量切分
@@ -77,7 +92,15 @@ func (s *SessionService) BuildSessionsForDate(ctx context.Context, date string) 
 	}
 	start := t.UnixMilli()
 	end := t.Add(24*time.Hour).UnixMilli() - 1
-	return s.buildSessionsForRange(ctx, start, end, nil)
+	created, err := s.buildSessionsForRange(ctx, start, end, nil)
+	if err != nil {
+		s.noteError(err)
+		return 0, err
+	}
+	if created > 0 {
+		s.lastSplitAt.Store(time.Now().UnixMilli())
+	}
+	return created, nil
 }
 
 // RebuildSessionsForDate 重建某天会话：创建一个更高的切分版本，以“覆盖展示”方式清理旧碎片（不删除旧数据）
@@ -91,7 +114,7 @@ func (s *SessionService) RebuildSessionsForDate(ctx context.Context, date string
 	end := t.Add(24*time.Hour).UnixMilli() - 1
 
 	targetDate := strings.TrimSpace(date)
-	return s.buildSessionsForRange(ctx, start, end, func(d string, max int) int {
+	created, err := s.buildSessionsForRange(ctx, start, end, func(d string, max int) int {
 		if d == targetDate {
 			if max <= 0 {
 				return 1
@@ -103,11 +126,27 @@ func (s *SessionService) RebuildSessionsForDate(ctx context.Context, date string
 		}
 		return max
 	})
+	if err != nil {
+		s.noteError(err)
+		return 0, err
+	}
+	if created > 0 {
+		s.lastSplitAt.Store(time.Now().UnixMilli())
+	}
+	return created, nil
 }
 
 // BuildSessionsForRange 按时间范围切分并写入 sessions 表
 func (s *SessionService) BuildSessionsForRange(ctx context.Context, startTime, endTime int64) (int, error) {
-	return s.buildSessionsForRange(ctx, startTime, endTime, nil)
+	created, err := s.buildSessionsForRange(ctx, startTime, endTime, nil)
+	if err != nil {
+		s.noteError(err)
+		return 0, err
+	}
+	if created > 0 {
+		s.lastSplitAt.Store(time.Now().UnixMilli())
+	}
+	return created, nil
 }
 
 // buildSessionsForRange 内部方法：按时间范围切分会话并写入
@@ -168,6 +207,36 @@ func (s *SessionService) buildSessionsForRange(
 		slog.Info("会话切分完成", "created", created, "start", startTime, "end", endTime)
 	}
 	return created, nil
+}
+
+type SessionServiceStats struct {
+	LastSplitAt int64  `json:"last_split_at"`
+	SplitErrors int64  `json:"split_errors"`
+	LastErrorAt int64  `json:"last_error_at"`
+	LastError   string `json:"last_error"`
+}
+
+func (s *SessionService) Stats() SessionServiceStats {
+	if s == nil {
+		return SessionServiceStats{}
+	}
+	raw := s.lastErrorMsg.Load()
+	msg, _ := raw.(string)
+	return SessionServiceStats{
+		LastSplitAt: s.lastSplitAt.Load(),
+		SplitErrors: s.splitErrors.Load(),
+		LastErrorAt: s.lastErrorAt.Load(),
+		LastError:   msg,
+	}
+}
+
+func (s *SessionService) noteError(err error) {
+	if s == nil || err == nil {
+		return
+	}
+	s.splitErrors.Add(1)
+	s.lastErrorAt.Store(time.Now().UnixMilli())
+	s.lastErrorMsg.Store(err.Error())
 }
 
 // assignSessionVersions 为会话分配切分版本号

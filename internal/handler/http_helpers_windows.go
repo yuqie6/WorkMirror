@@ -12,6 +12,12 @@ import (
 	"strings"
 )
 
+type APIError struct {
+	Error string `json:"error"`
+	Code  string `json:"code,omitempty"`
+	Hint  string `json:"hint,omitempty"`
+}
+
 // WriteJSON 将数据序列化为 JSON 并写入响应
 func WriteJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -19,9 +25,16 @@ func WriteJSON(w http.ResponseWriter, status int, v any) {
 	_ = json.NewEncoder(w).Encode(v)
 }
 
+func WriteAPIError(w http.ResponseWriter, status int, e APIError) {
+	if strings.TrimSpace(e.Error) == "" {
+		e.Error = http.StatusText(status)
+	}
+	WriteJSON(w, status, e)
+}
+
 // WriteError 写入错误响应
 func WriteError(w http.ResponseWriter, status int, msg string) {
-	WriteJSON(w, status, map[string]any{"error": msg})
+	WriteAPIError(w, status, APIError{Error: msg})
 }
 
 // readJSON 从请求体读取并解析 JSON

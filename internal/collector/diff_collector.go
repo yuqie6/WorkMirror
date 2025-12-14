@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -38,6 +39,10 @@ type DiffCollector struct {
 	stopOnce    sync.Once
 	debounceMap map[string]time.Time // 防抖：file -> lastSave
 	debounceDur time.Duration
+
+	lastEmitAt    atomic.Int64
+	dropped       atomic.Int64
+	skippedNonGit atomic.Int64
 }
 
 // DiffCollectorConfig 配置
@@ -229,12 +234,14 @@ func (c *DiffCollector) handleFsEvent(ctx context.Context, event fsnotify.Event)
 	// 发送事件
 	select {
 	case c.eventChan <- diff:
+		c.lastEmitAt.Store(time.Now().UnixMilli())
 		slog.Debug("Diff 事件已发送",
 			"file", diff.FileName,
 			"lines_added", diff.LinesAdded,
 			"lines_deleted", diff.LinesDeleted,
 		)
 	default:
+		c.dropped.Add(1)
 		slog.Warn("Diff 缓冲区已满，丢弃事件", "file", filePath)
 	}
 }
@@ -258,6 +265,7 @@ func (c *DiffCollector) captureDiff(ctx context.Context, filePath string) (*sche
 		linesDeleted = deleted
 	} else {
 		// 非 Git 仓库，暂时跳过（或实现简单的文件快照对比）
+		c.skippedNonGit.Add(1)
 		slog.Debug("非 Git 仓库，跳过 Diff", "file", filePath)
 		return nil, nil
 	}
@@ -280,6 +288,32 @@ func (c *DiffCollector) captureDiff(ctx context.Context, filePath string) (*sche
 		ProjectPath:  projectPath,
 		IsGitRepo:    isGit,
 	}, nil
+}
+
+type DiffCollectorStats struct {
+	Running       bool     `json:"running"`
+	LastEmitAt    int64    `json:"last_emit_at"`
+	Dropped       int64    `json:"dropped"`
+	SkippedNonGit int64    `json:"skipped_non_git"`
+	WatchPaths    []string `json:"watch_paths"`
+}
+
+func (c *DiffCollector) Stats() DiffCollectorStats {
+	if c == nil {
+		return DiffCollectorStats{}
+	}
+	c.mu.Lock()
+	running := c.running
+	paths := append([]string(nil), c.watchPaths...)
+	c.mu.Unlock()
+
+	return DiffCollectorStats{
+		Running:       running,
+		LastEmitAt:    c.lastEmitAt.Load(),
+		Dropped:       c.dropped.Load(),
+		SkippedNonGit: c.skippedNonGit.Load(),
+		WatchPaths:    paths,
+	}
 }
 
 // findGitRoot 查找 Git 仓库根目录

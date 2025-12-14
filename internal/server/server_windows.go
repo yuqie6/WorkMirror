@@ -107,6 +107,7 @@ func Start(ctx context.Context, rt *bootstrap.AgentRuntime, opts Options) (*Loca
 func registerRoutes(mux *http.ServeMux, api *handler.API) {
 	mux.HandleFunc("/health", api.HandleHealth)
 	mux.HandleFunc("/api/events", api.HandleSSE)
+	mux.HandleFunc("/api/status", requireMethod(http.MethodGet, api.HandleStatus))
 
 	mux.HandleFunc("/api/summary/today", requireMethod(http.MethodGet, api.HandleTodaySummary))
 	mux.HandleFunc("/api/summary/daily", requireMethod(http.MethodGet, api.HandleDailySummary))
@@ -129,6 +130,12 @@ func registerRoutes(mux *http.ServeMux, api *handler.API) {
 	mux.HandleFunc("/api/sessions/build", requireMethod(http.MethodPost, api.HandleBuildSessionsForDate))
 	mux.HandleFunc("/api/sessions/rebuild", requireMethod(http.MethodPost, api.HandleRebuildSessionsForDate))
 	mux.HandleFunc("/api/sessions/enrich", requireMethod(http.MethodPost, api.HandleEnrichSessionsForDate))
+
+	// v0.2 product API aliases
+	mux.HandleFunc("/api/maintenance/sessions/rebuild", requireMethod(http.MethodPost, api.HandleMaintenanceSessionsRebuild))
+	mux.HandleFunc("/api/maintenance/sessions/enrich", requireMethod(http.MethodPost, api.HandleMaintenanceSessionsEnrich))
+
+	mux.HandleFunc("/api/diagnostics/export", requireMethod(http.MethodGet, api.HandleDiagnosticsExport))
 
 	mux.HandleFunc("/api/settings", api.HandleSettings)
 }

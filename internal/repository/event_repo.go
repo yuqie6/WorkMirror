@@ -94,6 +94,28 @@ func (r *EventRepository) Count(ctx context.Context) (int64, error) {
 	return count, nil
 }
 
+// CountByTimeRange 统计时间范围内的事件数量
+func (r *EventRepository) CountByTimeRange(ctx context.Context, startTime, endTime int64) (int64, error) {
+	var count int64
+	if err := r.db.WithContext(ctx).Model(&schema.Event{}).
+		Where("timestamp >= ? AND timestamp <= ?", startTime, endTime).
+		Count(&count).Error; err != nil {
+		return 0, fmt.Errorf("统计事件失败: %w", err)
+	}
+	return count, nil
+}
+
+// GetLatestTimestamp 获取最新事件时间戳（毫秒，无记录返回 0）
+func (r *EventRepository) GetLatestTimestamp(ctx context.Context) (int64, error) {
+	var ts int64
+	if err := r.db.WithContext(ctx).Model(&schema.Event{}).
+		Select("COALESCE(MAX(timestamp), 0)").
+		Scan(&ts).Error; err != nil {
+		return 0, fmt.Errorf("查询最新事件时间失败: %w", err)
+	}
+	return ts, nil
+}
+
 // GetAppStats 获取应用使用统计
 func (r *EventRepository) GetAppStats(ctx context.Context, startTime, endTime int64) ([]AppStat, error) {
 	var stats []AppStat

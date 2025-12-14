@@ -15,8 +15,13 @@ export interface SettingsDTO {
     siliconflow_reranker_model: string;
 
     db_path: string;
+    diff_enabled: boolean;
     diff_watch_paths: string[];
+    browser_enabled: boolean;
     browser_history_path: string;
+
+    privacy_enabled: boolean;
+    privacy_patterns: string[];
 }
 
 export interface SaveSettingsRequestDTO {
@@ -30,8 +35,13 @@ export interface SaveSettingsRequestDTO {
     siliconflow_reranker_model?: string;
 
     db_path?: string;
+    diff_enabled?: boolean;
     diff_watch_paths?: string[];
+    browser_enabled?: boolean;
     browser_history_path?: string;
+
+    privacy_enabled?: boolean;
+    privacy_patterns?: string[];
 }
 
 const normalizeLines = (value: string): string[] => {
@@ -60,8 +70,14 @@ const SettingsView: React.FC = () => {
     const [siliconFlowRerankerModel, setSiliconFlowRerankerModel] = useState('');
 
     const [dbPath, setDBPath] = useState('');
+    const [diffEnabled, setDiffEnabled] = useState(true);
     const [diffWatchPathsText, setDiffWatchPathsText] = useState('');
+    const [browserEnabled, setBrowserEnabled] = useState(true);
     const [browserHistoryPath, setBrowserHistoryPath] = useState('');
+
+    const [privacyEnabled, setPrivacyEnabled] = useState(true);
+    const [privacyPatternsText, setPrivacyPatternsText] = useState('');
+    const [privacySample, setPrivacySample] = useState('https://example.com/callback?token=abc123&email=test@example.com#frag');
 
     const load = async () => {
         setLoading(true);
@@ -76,8 +92,12 @@ const SettingsView: React.FC = () => {
             setSiliconFlowEmbeddingModel(data.siliconflow_embedding_model || '');
             setSiliconFlowRerankerModel(data.siliconflow_reranker_model || '');
             setDBPath(data.db_path || '');
+            setDiffEnabled(!!data.diff_enabled);
             setDiffWatchPathsText((data.diff_watch_paths || []).join('\n'));
+            setBrowserEnabled(!!data.browser_enabled);
             setBrowserHistoryPath(data.browser_history_path || '');
+            setPrivacyEnabled(!!data.privacy_enabled);
+            setPrivacyPatternsText((data.privacy_patterns || []).join('\n'));
             setDeepSeekKey('');
             setSiliconFlowKey('');
         } catch (e: any) {
@@ -92,6 +112,40 @@ const SettingsView: React.FC = () => {
     }, []);
 
     const previewWatchPaths = useMemo(() => normalizeLines(diffWatchPathsText), [diffWatchPathsText]);
+    const previewPrivacyPatterns = useMemo(() => normalizeLines(privacyPatternsText), [privacyPatternsText]);
+
+    const privacyPreview = useMemo(() => {
+        const input = privacySample || '';
+        const urlRegex = /https?:\/\/[^\s]+/g;
+
+        const sanitizeURL = (raw: string) => {
+            try {
+                const u = new URL(raw);
+                u.username = '';
+                u.password = '';
+                u.search = '';
+                u.hash = '';
+                if (u.host) u.pathname = '/...';
+                return u.toString();
+            } catch {
+                const cut = raw.replace(/[?#].*$/, '');
+                return cut;
+            }
+        };
+
+        let out = input.replace(urlRegex, (m) => sanitizeURL(m));
+        if (!privacyEnabled) return out;
+
+        for (const pat of previewPrivacyPatterns) {
+            try {
+                const re = new RegExp(pat, 'g');
+                out = out.replace(re, '***');
+            } catch {
+                // ignore invalid patterns
+            }
+        }
+        return out;
+    }, [privacyEnabled, privacySample, previewPrivacyPatterns]);
 
     const save = async () => {
         setSaving(true);
@@ -109,8 +163,13 @@ const SettingsView: React.FC = () => {
                 siliconflow_reranker_model: siliconFlowRerankerModel.trim() || undefined,
 
                 db_path: dbPath.trim() || undefined,
+                diff_enabled: diffEnabled,
                 diff_watch_paths: previewWatchPaths,
+                browser_enabled: browserEnabled,
                 browser_history_path: browserHistoryPath.trim() || undefined,
+
+                privacy_enabled: privacyEnabled,
+                privacy_patterns: previewPrivacyPatterns,
             };
             const resp = await SaveSettings(req as any) as any;
             const msg = resp?.restart_required ? '保存成功，需要重启 Agent 生效' : '保存成功';
@@ -246,7 +305,7 @@ const SettingsView: React.FC = () => {
 
                 <div className="col-span-12">
                     <div className="card">
-                        <h3 className="text-sm font-semibold text-gray-900 mb-4">存储与目录</h3>
+                        <h3 className="text-sm font-semibold text-gray-900 mb-4">采集与目录</h3>
                         <div className="grid grid-cols-12 gap-4">
                             <div className="col-span-12">
                                 <label className="text-xs text-gray-500">SQLite DB 路径</label>
@@ -256,6 +315,11 @@ const SettingsView: React.FC = () => {
                                     onChange={(e) => setDBPath(e.target.value)}
                                     placeholder="./data/mirror.db"
                                 />
+                            </div>
+                            <div className="col-span-12 flex items-center gap-3">
+                                <label className="text-xs text-gray-500">Diff Collector</label>
+                                <input type="checkbox" checked={diffEnabled} onChange={(e) => setDiffEnabled(e.target.checked)} />
+                                <span className="text-xs text-gray-400">建议开启；未配置 watch paths 时不会采集。</span>
                             </div>
                             <div className="col-span-12">
                                 <label className="text-xs text-gray-500">Diff 采集目录（每行一个路径）</label>
@@ -271,6 +335,16 @@ const SettingsView: React.FC = () => {
                                     ))}
                                     {previewWatchPaths.length > 6 && <span className="pill">+{previewWatchPaths.length - 6}</span>}
                                 </div>
+                                {diffEnabled && previewWatchPaths.length === 0 && (
+                                    <div className="mt-3 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-xl p-3">
+                                        watch paths 为空：会导致 Session 证据链偏弱（无 diff）。建议至少添加一个 Git 项目目录。
+                                    </div>
+                                )}
+                            </div>
+                            <div className="col-span-12 flex items-center gap-3">
+                                <label className="text-xs text-gray-500">Browser Collector</label>
+                                <input type="checkbox" checked={browserEnabled} onChange={(e) => setBrowserEnabled(e.target.checked)} />
+                                <span className="text-xs text-gray-400">可选；用于补强证据链（默认会脱敏 URL query/fragment）。</span>
                             </div>
                             <div className="col-span-12">
                                 <label className="text-xs text-gray-500">浏览器 History 路径（可选）</label>
@@ -284,13 +358,51 @@ const SettingsView: React.FC = () => {
                         </div>
                     </div>
                 </div>
+
+                <div className="col-span-12">
+                    <div className="card">
+                        <h3 className="text-sm font-semibold text-gray-900 mb-4">隐私（脱敏）</h3>
+                        <div className="grid grid-cols-12 gap-4">
+                            <div className="col-span-12 flex items-center gap-3">
+                                <label className="text-xs text-gray-500">启用脱敏</label>
+                                <input type="checkbox" checked={privacyEnabled} onChange={(e) => setPrivacyEnabled(e.target.checked)} />
+                                <span className="text-xs text-gray-400">默认开启；用于窗口标题与浏览 URL 的最小化脱敏。</span>
+                            </div>
+                            <div className="col-span-12">
+                                <label className="text-xs text-gray-500">Patterns（每行一个正则）</label>
+                                <textarea
+                                    className="mt-1 w-full min-h-[120px] rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm outline-none focus:border-amber-300"
+                                    value={privacyPatternsText}
+                                    onChange={(e) => setPrivacyPatternsText(e.target.value)}
+                                    placeholder="(?i)\\b(password|token)\\b[:=]\\s*\\S+"
+                                />
+                                <div className="mt-2 flex flex-wrap gap-2">
+                                    {previewPrivacyPatterns.slice(0, 6).map((p) => (
+                                        <span key={p} className="pill">{p}</span>
+                                    ))}
+                                    {previewPrivacyPatterns.length > 6 && <span className="pill">+{previewPrivacyPatterns.length - 6}</span>}
+                                </div>
+                            </div>
+                            <div className="col-span-12">
+                                <label className="text-xs text-gray-500">预览（示例文本）</label>
+                                <textarea
+                                    className="mt-1 w-full min-h-[90px] rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm outline-none focus:border-amber-300"
+                                    value={privacySample}
+                                    onChange={(e) => setPrivacySample(e.target.value)}
+                                />
+                                <div className="mt-2 text-xs text-gray-500">脱敏结果：</div>
+                                <pre className="mt-1 text-xs bg-gray-50 border border-gray-100 rounded-xl p-3 overflow-auto whitespace-pre-wrap break-words">{privacyPreview}</pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div className="flex items-center gap-3">
                 <button className="btn-gold disabled:opacity-60" onClick={() => void save()} disabled={saving}>
                     {saving ? '保存中...' : '保存设置'}
                 </button>
-                <span className="text-xs text-gray-400">API Key 留空不会覆盖；保存会触发热重载。</span>
+                <span className="text-xs text-gray-400">API Key 留空不会覆盖；保存后需要重启 Agent 生效。</span>
             </div>
         </div>
     );

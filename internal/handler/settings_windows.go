@@ -3,7 +3,10 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
+	"os"
+	"strings"
 
 	"github.com/yuqie6/mirror/internal/dto"
 	"github.com/yuqie6/mirror/internal/eventbus"
@@ -46,8 +49,13 @@ func (a *API) getSettings(w http.ResponseWriter, r *http.Request) {
 		SiliconFlowRerankerModel:  cfg.AI.SiliconFlow.RerankerModel,
 
 		DBPath:             cfg.Storage.DBPath,
+		DiffEnabled:        cfg.Diff.Enabled,
 		DiffWatchPaths:     append([]string(nil), cfg.Diff.WatchPaths...),
+		BrowserEnabled:     cfg.Browser.Enabled,
 		BrowserHistoryPath: cfg.Browser.HistoryPath,
+
+		PrivacyEnabled:  cfg.Privacy.Enabled,
+		PrivacyPatterns: append([]string(nil), cfg.Privacy.Patterns...),
 	})
 }
 
@@ -96,11 +104,50 @@ func (a *API) saveSettings(w http.ResponseWriter, r *http.Request) {
 	if req.DBPath != nil {
 		next.Storage.DBPath = *req.DBPath
 	}
+	if req.DiffEnabled != nil {
+		next.Diff.Enabled = *req.DiffEnabled
+	}
 	if req.DiffWatchPaths != nil {
-		next.Diff.WatchPaths = append([]string(nil), (*req.DiffWatchPaths)...)
+		paths := make([]string, 0, len(*req.DiffWatchPaths))
+		for _, p := range *req.DiffWatchPaths {
+			v := strings.TrimSpace(p)
+			if v == "" {
+				continue
+			}
+			if err := validateDirExists(v); err != nil {
+				WriteAPIError(w, http.StatusBadRequest, APIError{
+					Error: "diff watch path 无效: " + v,
+					Code:  "invalid_diff_watch_path",
+					Hint:  err.Error(),
+				})
+				return
+			}
+			paths = append(paths, v)
+		}
+		next.Diff.WatchPaths = paths
+	}
+	if req.BrowserEnabled != nil {
+		next.Browser.Enabled = *req.BrowserEnabled
 	}
 	if req.BrowserHistoryPath != nil {
-		next.Browser.HistoryPath = *req.BrowserHistoryPath
+		p := strings.TrimSpace(*req.BrowserHistoryPath)
+		if p != "" {
+			if err := validateFileExists(p); err != nil {
+				WriteAPIError(w, http.StatusBadRequest, APIError{
+					Error: "browser history path 无效",
+					Code:  "invalid_browser_history_path",
+					Hint:  err.Error(),
+				})
+				return
+			}
+		}
+		next.Browser.HistoryPath = p
+	}
+	if req.PrivacyEnabled != nil {
+		next.Privacy.Enabled = *req.PrivacyEnabled
+	}
+	if req.PrivacyPatterns != nil {
+		next.Privacy.Patterns = append([]string(nil), (*req.PrivacyPatterns)...)
 	}
 
 	if err := config.WriteFile(path, &next); err != nil {
@@ -110,6 +157,29 @@ func (a *API) saveSettings(w http.ResponseWriter, r *http.Request) {
 
 	if a.hub != nil {
 		a.hub.Publish(eventbus.Event{Type: "settings_updated"})
+		a.hub.Publish(eventbus.Event{Type: "pipeline_status_changed"})
 	}
 	WriteJSON(w, http.StatusOK, &dto.SaveSettingsResponseDTO{RestartRequired: true})
+}
+
+func validateDirExists(p string) error {
+	info, err := os.Stat(p)
+	if err != nil {
+		return fmt.Errorf("路径不存在或不可访问: %w", err)
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("不是目录")
+	}
+	return nil
+}
+
+func validateFileExists(p string) error {
+	info, err := os.Stat(p)
+	if err != nil {
+		return fmt.Errorf("文件不存在或不可访问: %w", err)
+	}
+	if info.IsDir() {
+		return fmt.Errorf("是目录，不是文件")
+	}
+	return nil
 }

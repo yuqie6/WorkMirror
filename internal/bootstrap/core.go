@@ -83,7 +83,10 @@ func NewCore(cfgPath string) (*Core, error) {
 		BaseURL: cfg.AI.DeepSeek.BaseURL,
 		Model:   cfg.AI.DeepSeek.Model,
 	})
-	analyzer := ai.NewDiffAnalyzer(c.Clients.DeepSeek)
+	var analyzer service.Analyzer
+	if c.Clients.DeepSeek != nil && c.Clients.DeepSeek.IsConfigured() {
+		analyzer = ai.NewDiffAnalyzer(c.Clients.DeepSeek)
+	}
 
 	// Services
 	c.Services.Skills = service.NewSkillService(c.Repos.Skill, c.Repos.Diff, c.Repos.SkillActivity, service.DefaultExpPolicy{})

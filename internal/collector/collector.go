@@ -6,6 +6,7 @@ import (
 	"context"
 	"log/slog"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/yuqie6/mirror/internal/schema"
@@ -36,6 +37,9 @@ type WindowCollector struct {
 	running       bool
 	stopOnce      sync.Once  // 确保 Stop 只执行一次
 	mu            sync.Mutex // 保护 running 状态
+
+	lastEmitAt atomic.Int64
+	dropped    atomic.Int64
 }
 
 // CollectorConfig 采集器配置
@@ -239,12 +243,40 @@ func (c *WindowCollector) emitEvent(w *WindowInfo, duration time.Duration) {
 
 	select {
 	case c.eventChan <- event:
+		c.lastEmitAt.Store(time.Now().UnixMilli())
 		slog.Debug("事件已发送",
 			"app", w.AppName,
 			"title", w.Title,
 			"duration", duration,
 		)
 	default:
+		c.dropped.Add(1)
 		slog.Warn("事件缓冲区已满，丢弃事件", "app", w.AppName)
+	}
+}
+
+type WindowCollectorStats struct {
+	Running    bool  `json:"running"`
+	LastEmitAt int64 `json:"last_emit_at"`
+	Dropped    int64 `json:"dropped"`
+	BufferLen  int   `json:"buffer_len"`
+	BufferCap  int   `json:"buffer_cap"`
+	IdleMode   bool  `json:"idle_mode"`
+}
+
+func (c *WindowCollector) Stats() WindowCollectorStats {
+	if c == nil {
+		return WindowCollectorStats{}
+	}
+	c.mu.Lock()
+	running := c.running
+	c.mu.Unlock()
+	return WindowCollectorStats{
+		Running:    running,
+		LastEmitAt: c.lastEmitAt.Load(),
+		Dropped:    c.dropped.Load(),
+		BufferLen:  len(c.eventChan),
+		BufferCap:  cap(c.eventChan),
+		IdleMode:   c.idleMode,
 	}
 }

@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { BuildSessionsForDate, EnrichSessionsForDate, GetSessionsByDate, RebuildSessionsForDate } from '../../api/app';
-import SessionDetailModal, { SessionDTO } from '../sessions/SessionDetailModal';
+import React, { useMemo, useState } from 'react';
+import { useSessionsByDate } from '../../hooks/useSessionsByDate';
+import SessionList from '../sessions/SessionList';
+import SessionDetailModal from '../sessions/SessionDetailModal';
 
 export interface DailySummary {
     date: string;
@@ -68,16 +69,6 @@ export interface SummaryViewProps {
     onSelectPeriod?: (type: 'week' | 'month', startDate: string) => void;
     onReloadPeriodIndex?: (type: 'week' | 'month') => void;
 }
-
-const sessionCategoryLabel = (cat: string): string => {
-    switch ((cat || '').toLowerCase()) {
-        case 'technical': return '技术';
-        case 'learning': return '学习';
-        case 'exploration': return '探索';
-        case 'other': return '其他';
-        default: return cat || '其他';
-    }
-};
 
 const StatCard: React.FC<{ value: string | number; label: string; }> = ({ value, label }) => (
     <div className="stat-card">
@@ -434,71 +425,8 @@ const SummaryView: React.FC<SummaryViewProps> = ({
     summary, periodSummary, loading, error, onGenerate, onGeneratePeriod, skills = [], appStats = [],
     summaryIndex = [], weekSummaryIndex = [], monthSummaryIndex = [], selectedDate = null, onSelectDate, onReloadIndex, onSelectPeriod, onReloadPeriodIndex,
 }) => {
-    const [sessions, setSessions] = useState<SessionDTO[]>([]);
-    const [sessionsLoading, setSessionsLoading] = useState(false);
-    const [sessionsError, setSessionsError] = useState<string | null>(null);
+    const sessionsHook = useSessionsByDate(summary?.date);
     const [activeSessionId, setActiveSessionId] = useState<number | null>(null);
-
-    const reloadSessions = async (date: string) => {
-        setSessionsLoading(true);
-        setSessionsError(null);
-        try {
-            const res = await GetSessionsByDate(date);
-            setSessions(res || []);
-        } catch (e: any) {
-            setSessionsError(e?.message || '加载会话失败');
-            setSessions([]);
-        } finally {
-            setSessionsLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        if (!summary?.date) {
-            setSessions([]);
-            return;
-        }
-        void reloadSessions(summary.date);
-    }, [summary?.date]);
-
-    const buildSessions = async () => {
-        if (!summary?.date) return;
-        setSessionsLoading(true);
-        try {
-            await BuildSessionsForDate(summary.date);
-            await reloadSessions(summary.date);
-        } catch (e: any) {
-            setSessionsError(e?.message || '切分会话失败');
-        } finally {
-            setSessionsLoading(false);
-        }
-    };
-
-    const rebuildSessions = async () => {
-        if (!summary?.date) return;
-        setSessionsLoading(true);
-        try {
-            await RebuildSessionsForDate(summary.date);
-            await reloadSessions(summary.date);
-        } catch (e: any) {
-            setSessionsError(e?.message || '重建会话失败');
-        } finally {
-            setSessionsLoading(false);
-        }
-    };
-
-    const enrichSessions = async () => {
-        if (!summary?.date) return;
-        setSessionsLoading(true);
-        try {
-            await EnrichSessionsForDate(summary.date);
-            await reloadSessions(summary.date);
-        } catch (e: any) {
-            setSessionsError(e?.message || '生成会话摘要失败');
-        } finally {
-            setSessionsLoading(false);
-        }
-    };
     const focusStats = useMemo(() => {
         if (!appStats.length) return { focusPercent: 0, codingTime: 0, totalTime: 0 };
         let codingTime = 0, totalTime = 0;
@@ -558,8 +486,9 @@ const SummaryView: React.FC<SummaryViewProps> = ({
             return (
                 <div className="flex flex-col items-center justify-center min-h-[50vh] text-center space-y-8 animate-fade-in">
                     <h2 className="text-4xl font-bold text-gray-900">Welcome back, <span className="text-gradient">Developer</span></h2>
-                    <p className="text-gray-500 text-lg max-w-md">从左侧选择日期查看历史日报，或生成今日总结。</p>
-                    <button className="btn-gold flex items-center gap-2" onClick={onGenerate}><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" /></svg>生成今日总结</button>
+                    <p className="text-gray-500 text-lg max-w-md">从左侧选择日期查看历史日报，或生成/刷新今日总结。</p>
+                    <button className="btn-gold flex items-center gap-2" onClick={onGenerate}><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" /></svg>生成/刷新今日总结</button>
+                    <div className="text-xs text-gray-400">影响范围：仅重新生成总结（Summary），不会重建会话（Session）。</div>
                     {error && <div className="px-4 py-2 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">{error}</div>}
                 </div>
             );
@@ -598,54 +527,32 @@ const SummaryView: React.FC<SummaryViewProps> = ({
                             <p className="text-xs text-gray-400">点击会话可展开窗口/Diff/浏览证据</p>
                         </div>
                         <div className="flex items-center gap-2">
-                            <button className="text-xs px-3 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition" onClick={buildSessions} disabled={sessionsLoading}>
-                                切分
+                            <button className="text-xs px-3 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition" onClick={() => void sessionsHook.build()} disabled={sessionsHook.loading}>
+                                切分会话
                             </button>
-                            <button className="text-xs px-3 py-2 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 transition" onClick={rebuildSessions} disabled={sessionsLoading}>
-                                重建
+                            <button className="text-xs px-3 py-2 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 transition" onClick={() => void sessionsHook.rebuild()} disabled={sessionsHook.loading}>
+                                重建会话
                             </button>
-                            <button className="text-xs px-3 py-2 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 transition" onClick={enrichSessions} disabled={sessionsLoading}>
-                                生成摘要
+                            <button className="text-xs px-3 py-2 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 transition" onClick={() => void sessionsHook.enrich()} disabled={sessionsHook.loading}>
+                                补全会话语义
                             </button>
-                            <button className="text-xs px-3 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition" onClick={() => summary?.date && reloadSessions(summary.date)} disabled={sessionsLoading}>
+                            <button className="text-xs px-3 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition" onClick={() => void sessionsHook.reload()} disabled={sessionsHook.loading}>
                                 刷新
                             </button>
                         </div>
                     </div>
+                    <div className="text-xs text-gray-400 mb-2">影响范围：重建会话会改变会话口径（version 覆盖展示）；补全仅更新摘要/证据索引。</div>
 
-                    {sessionsLoading && sessions.length === 0 && (
+                    {sessionsHook.loading && sessionsHook.sessions.length === 0 && (
                         <div className="text-sm text-gray-400">加载中...</div>
                     )}
-                    {sessionsError && (
-                        <div className="text-sm text-red-500 mb-2">{sessionsError}</div>
+                    {sessionsHook.error && (
+                        <div className="text-sm text-red-500 mb-2">{sessionsHook.error}</div>
                     )}
-                    {(!sessionsLoading && sessions.length === 0) && (
-                        <div className="text-sm text-gray-400">暂无会话记录（可先点击“切分”，再点击“生成摘要”）</div>
+                    {(!sessionsHook.loading && sessionsHook.sessions.length === 0) && (
+                        <div className="text-sm text-gray-400">暂无会话记录（可先点击“切分会话”，再点击“补全会话语义”）</div>
                     )}
-                    {sessions.length > 0 && (
-                        <div className="space-y-2">
-                            {sessions.map((s) => (
-                                <button
-                                    key={s.id}
-                                    className="w-full text-left p-3 rounded-xl border border-gray-100 hover:border-amber-200 hover:bg-amber-50/40 transition"
-                                    onClick={() => setActiveSessionId(s.id)}
-                                >
-                                    <div className="flex items-center justify-between gap-3">
-                                        <div className="min-w-0">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-sm font-semibold text-gray-900">{s.time_range || '会话'}</span>
-                                                {s.category && <span className="pill">{sessionCategoryLabel(s.category)}</span>}
-                                                {(s.diff_count || 0) > 0 && <span className="text-xs text-gray-400">Diff {s.diff_count}</span>}
-                                                {(s.browser_count || 0) > 0 && <span className="text-xs text-gray-400">Browser {s.browser_count}</span>}
-                                            </div>
-                                            <div className="text-xs text-gray-400 truncate">{s.primary_app || ''}</div>
-                                        </div>
-                                        <div className="text-sm text-gray-700 line-clamp-2 max-w-[55%]">{s.summary || '（未生成摘要）'}</div>
-                                    </div>
-                                </button>
-                            ))}
-                        </div>
-                    )}
+                    <SessionList sessions={sessionsHook.sessions} onSelect={(id) => setActiveSessionId(id)} />
                 </div>
 
                 {activeSessionId && (

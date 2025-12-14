@@ -102,6 +102,34 @@ func (r *SessionRepository) GetByTimeRange(ctx context.Context, startTime, endTi
 	return sessions, nil
 }
 
+// CountByTimeRange 统计时间范围内会话数量（按权威版本口径）
+func (r *SessionRepository) CountByTimeRange(ctx context.Context, startTime, endTime int64) (int64, error) {
+	var count int64
+	if err := r.db.WithContext(ctx).
+		Model(&schema.Session{}).
+		Where("start_time >= ? AND start_time <= ?", startTime, endTime).
+		Where(latestSessionVersionPerDateSQL).
+		Count(&count).Error; err != nil {
+		return 0, fmt.Errorf("统计会话失败: %w", err)
+	}
+	return count, nil
+}
+
+// CountPendingSemanticByTimeRange 统计待补全语义的会话数量（按权威版本口径）
+// v0.2 最小定义：summary 为空即认为待补全（离线规则补全也会写 summary，因此最终会归零）。
+func (r *SessionRepository) CountPendingSemanticByTimeRange(ctx context.Context, startTime, endTime int64) (int64, error) {
+	var count int64
+	if err := r.db.WithContext(ctx).
+		Model(&schema.Session{}).
+		Where("start_time >= ? AND start_time <= ?", startTime, endTime).
+		Where(latestSessionVersionPerDateSQL).
+		Where("summary = '' OR summary IS NULL").
+		Count(&count).Error; err != nil {
+		return 0, fmt.Errorf("统计待补全会话失败: %w", err)
+	}
+	return count, nil
+}
+
 // GetMaxSessionVersionByDate 获取某日期的最大切分版本号（无记录返回 0）
 func (r *SessionRepository) GetMaxSessionVersionByDate(ctx context.Context, date string) (int, error) {
 	var max int

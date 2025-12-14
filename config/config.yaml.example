@@ -65,12 +65,13 @@ ai:
     embedding_model: "BAAI/bge-large-zh-v1.5"
     reranker_model: "BAAI/bge-reranker-v2-m3"
 
-# 隐私配置 (Phase 2)
+# 隐私配置（默认开启：Local-first & Privacy by default）
 privacy:
-  enabled: false
-  # patterns 为正则表达式列表；匹配到的内容会被替换为 "***"
-  # 示例：
-  # - "(?i)password=[^&\\s]+"        # URL/文本中的 password 参数
-  # - "\\b\\d{11}\\b"               # 11 位手机号
-  # - "(?i)(token|apikey)=[^&\\s]+" # 常见 token
-  patterns: []
+  enabled: true
+  # patterns 为正则表达式列表；匹配到的内容会被替换为 "***"。
+  # 注意：URL query/fragment 会在 URL 级别默认清空（保留域名与 "/..." 以支持证据链解释）。
+  patterns:
+    - "(?i)\\b(email|e-mail)\\b[:=]\\s*\\S+"
+    - "[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}"
+    - "(?i)\\b(password|passwd|pwd)\\b[:=]\\s*\\S+"
+    - "(?i)\\b(api[_-]?key|token|access[_-]?token|refresh[_-]?token|secret|authorization)\\b[:=]\\s*\\S+"

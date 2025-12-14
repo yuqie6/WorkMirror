@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { GetSkillEvidence, GetDiffDetail, GetSkillSessions } from '../../api/app';
-import SessionDetailModal, { SessionDTO } from '../sessions/SessionDetailModal';
+import SessionDetailModal from '../sessions/SessionDetailModal';
+import type { SessionDTO } from '../../types/session';
 import EmptyState, { SkillTreeIcon } from '../common/EmptyState';
 
 export interface SkillNode {
@@ -650,7 +651,7 @@ const SkillView: React.FC<SkillViewProps> = ({ skills }) => {
                                     {sessionsError && <div className="text-sm text-red-500">{sessionsError}</div>}
 
                                     {!sessionsLoading && !sessionsError && skillSessions.length === 0 && (
-                                        <div className="text-sm text-gray-400">暂无会话关联（可在“日报”页生成会话摘要后再试）。</div>
+                                        <div className="text-sm text-gray-400">暂无会话关联（可在“日报”页或“状态”页补全会话语义后再试）。</div>
                                     )}
 
                                     {!sessionsLoading && !sessionsError && skillSessions.length > 0 && (

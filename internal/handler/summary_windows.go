@@ -13,6 +13,9 @@ import (
 )
 
 func (a *API) HandleTodaySummary(w http.ResponseWriter, r *http.Request) {
+	if !a.requireWritableDB(w) {
+		return
+	}
 	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 	defer cancel()
 
@@ -77,6 +80,9 @@ func (a *API) HandleDailySummary(w http.ResponseWriter, r *http.Request) {
 	date := strings.TrimSpace(r.URL.Query().Get("date"))
 	if date == "" {
 		WriteError(w, http.StatusBadRequest, "date 不能为空")
+		return
+	}
+	if !a.requireWritableDB(w) {
 		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)

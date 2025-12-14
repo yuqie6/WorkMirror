@@ -90,12 +90,24 @@ func (a *API) HandlePeriodSummary(w http.ResponseWriter, r *http.Request) {
 	}
 	dataEndStr := dataEnd.Format("2006-01-02")
 
+	// 安全模式：允许读取缓存，但禁止生成/写入
+	safeMode := a.rt.Core != nil && a.rt.Core.DB != nil && a.rt.Core.DB.SafeMode
+
 	if !force && a.rt.Repos.PeriodSummary != nil {
 		cached, err := a.rt.Repos.PeriodSummary.GetByTypeAndRange(ctx, periodType, startStr, endStr, 365*24*time.Hour)
 		if err == nil && cached != nil {
 			WriteJSON(w, http.StatusOK, periodSummaryToDTO(cached))
 			return
 		}
+	}
+
+	if safeMode {
+		WriteAPIError(w, http.StatusServiceUnavailable, APIError{
+			Error: "数据库处于安全模式，已禁用生成阶段汇总",
+			Code:  "db_safe_mode",
+			Hint:  "请先在 Status 页查看原因并导出诊断包；修复后重启 Agent",
+		})
+		return
 	}
 
 	summaries, err := a.rt.Repos.Summary.GetByDateRange(ctx, startStr, dataEndStr)

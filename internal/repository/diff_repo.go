@@ -180,6 +180,17 @@ func (r *DiffRepository) CountByDateRange(ctx context.Context, startTime, endTim
 	return count, nil
 }
 
+// GetLatestTimestamp 获取最新 Diff 时间戳（毫秒，无记录返回 0）
+func (r *DiffRepository) GetLatestTimestamp(ctx context.Context) (int64, error) {
+	var ts int64
+	if err := r.db.WithContext(ctx).Model(&schema.Diff{}).
+		Select("COALESCE(MAX(timestamp), 0)").
+		Scan(&ts).Error; err != nil {
+		return 0, fmt.Errorf("查询最新 Diff 时间失败: %w", err)
+	}
+	return ts, nil
+}
+
 // GetAllAnalyzed 获取所有已分析的 Diff
 func (r *DiffRepository) GetAllAnalyzed(ctx context.Context) ([]schema.Diff, error) {
 	var diffs []schema.Diff

@@ -6,6 +6,8 @@ import (
 	"context"
 	"log/slog"
 	"sync"
+	"sync/atomic"
+	"time"
 
 	"github.com/yuqie6/mirror/internal/collector"
 	"github.com/yuqie6/mirror/internal/schema"
@@ -19,6 +21,11 @@ type DiffService struct {
 	wg          sync.WaitGroup
 	running     bool
 	onPersisted func(count int)
+
+	lastPersistAt atomic.Int64
+	persistErrors atomic.Int64
+	lastErrorAt   atomic.Int64
+	lastErrorMsg  atomic.Value // string
 }
 
 // NewDiffService 创建 Diff 服务
@@ -101,9 +108,13 @@ func (s *DiffService) processLoop(ctx context.Context) {
 func (s *DiffService) handleDiff(ctx context.Context, diff *schema.Diff) {
 	// 保存到数据库
 	if err := s.diffRepo.Create(ctx, diff); err != nil {
+		s.persistErrors.Add(1)
+		s.lastErrorAt.Store(time.Now().UnixMilli())
+		s.lastErrorMsg.Store(err.Error())
 		slog.Error("保存 Diff 失败", "file", diff.FileName, "error", err)
 		return
 	}
+	s.lastPersistAt.Store(time.Now().UnixMilli())
 
 	slog.Info("Diff 已记录",
 		"file", diff.FileName,
@@ -113,6 +124,29 @@ func (s *DiffService) handleDiff(ctx context.Context, diff *schema.Diff) {
 	)
 	if s.onPersisted != nil {
 		s.onPersisted(1)
+	}
+}
+
+type DiffServiceStats struct {
+	Running       bool   `json:"running"`
+	LastPersistAt int64  `json:"last_persist_at"`
+	PersistErrors int64  `json:"persist_errors"`
+	LastErrorAt   int64  `json:"last_error_at"`
+	LastError     string `json:"last_error"`
+}
+
+func (s *DiffService) Stats() DiffServiceStats {
+	if s == nil {
+		return DiffServiceStats{}
+	}
+	raw := s.lastErrorMsg.Load()
+	msg, _ := raw.(string)
+	return DiffServiceStats{
+		Running:       s.running,
+		LastPersistAt: s.lastPersistAt.Load(),
+		PersistErrors: s.persistErrors.Load(),
+		LastErrorAt:   s.lastErrorAt.Load(),
+		LastError:     msg,
 	}
 }
 

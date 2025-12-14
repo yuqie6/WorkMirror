@@ -3,11 +3,12 @@ import TopNav from './TopNav';
 
 interface MainLayoutProps {
     children: React.ReactNode;
-    activeTab: 'summary' | 'skills' | 'trends' | 'settings';
-    onTabChange: (tab: 'summary' | 'skills' | 'trends' | 'settings') => void;
+    activeTab: 'summary' | 'sessions' | 'skills' | 'trends' | 'status' | 'settings';
+    onTabChange: (tab: 'summary' | 'sessions' | 'skills' | 'trends' | 'status' | 'settings') => void;
+    systemIndicator?: { text: string; tone: 'info' | 'warn' | 'danger' } | null;
 }
 
-const MainLayout: React.FC<MainLayoutProps> = ({ children, activeTab, onTabChange }) => {
+const MainLayout: React.FC<MainLayoutProps> = ({ children, activeTab, onTabChange, systemIndicator }) => {
     return (
         <div className="min-h-screen bg-gradient-warm relative">
             {/* 装饰性渐变光斑 */}
@@ -15,7 +16,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, activeTab, onTabChang
             <div className="fixed bottom-0 left-0 w-[40vw] h-[40vh] bg-gradient-to-tr from-amber-100/30 to-transparent rounded-full blur-3xl pointer-events-none" />
             
             {/* 顶部导航 */}
-            <TopNav activeTab={activeTab} onTabChange={onTabChange} />
+            <TopNav activeTab={activeTab} onTabChange={onTabChange} systemIndicator={systemIndicator} />
             
             {/* 主内容区 */}
             <main className="relative z-10 px-6 pb-12">

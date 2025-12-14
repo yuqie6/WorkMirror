@@ -2,15 +2,18 @@ import React from 'react';
 import Tooltip from '../common/Tooltip';
 
 interface TopNavProps {
-    activeTab: 'summary' | 'skills' | 'trends' | 'settings';
-    onTabChange: (tab: 'summary' | 'skills' | 'trends' | 'settings') => void;
+    activeTab: 'summary' | 'sessions' | 'skills' | 'trends' | 'status' | 'settings';
+    onTabChange: (tab: 'summary' | 'sessions' | 'skills' | 'trends' | 'status' | 'settings') => void;
+    systemIndicator?: { text: string; tone: 'info' | 'warn' | 'danger' } | null;
 }
 
-const TopNav: React.FC<TopNavProps> = ({ activeTab, onTabChange }) => {
+const TopNav: React.FC<TopNavProps> = ({ activeTab, onTabChange, systemIndicator }) => {
     const menuItems = [
         { id: 'summary', label: '今日总结' },
+        { id: 'sessions', label: '会话' },
         { id: 'skills', label: '技能树' },
         { id: 'trends', label: '趋势分析' },
+        { id: 'status', label: '状态' },
         { id: 'settings', label: '设置' },
     ];
 
@@ -40,6 +43,20 @@ const TopNav: React.FC<TopNavProps> = ({ activeTab, onTabChange }) => {
 
                 {/* 右侧操作区 */}
                 <div className="flex items-center gap-4">
+                    {systemIndicator?.text && (
+                        <span
+                            className={`px-3 py-1.5 rounded-full border text-xs font-medium ${
+                                systemIndicator.tone === 'danger'
+                                    ? 'bg-red-50 text-red-700 border-red-100'
+                                    : systemIndicator.tone === 'warn'
+                                        ? 'bg-amber-50 text-amber-700 border-amber-100'
+                                        : 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                            }`}
+                            title="运行模式"
+                        >
+                            {systemIndicator.text}
+                        </span>
+                    )}
                     {/* 语言切换 */}
                     <button className="px-3 py-1.5 text-sm font-medium text-gray-600 bg-white/60 rounded-full hover:bg-white transition-colors">
                         中文

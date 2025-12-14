@@ -132,3 +132,14 @@ func (r *BrowserEventRepository) CountByDateRange(ctx context.Context, startTime
 	}
 	return count, nil
 }
+
+// GetLatestTimestamp 获取最新浏览器事件时间戳（毫秒，无记录返回 0）
+func (r *BrowserEventRepository) GetLatestTimestamp(ctx context.Context) (int64, error) {
+	var ts int64
+	if err := r.db.WithContext(ctx).Model(&schema.BrowserEvent{}).
+		Select("COALESCE(MAX(timestamp), 0)").
+		Scan(&ts).Error; err != nil {
+		return 0, fmt.Errorf("查询最新浏览器事件时间失败: %w", err)
+	}
+	return ts, nil
+}

@@ -32,6 +32,12 @@ type TrackerService struct {
 	writeChan     chan []schema.Event
 	writerDone    chan struct{}
 	writeQueueCap int
+
+	lastPersistAt  atomic.Int64
+	lastErrorAt    atomic.Int64
+	lastErrorMsg   atomic.Value // string
+	writeErrors    atomic.Int64
+	droppedBatches atomic.Int64
 }
 
 // TrackerConfig 追踪服务配置
@@ -122,8 +128,11 @@ func (t *TrackerService) Stop() error {
 	close(t.stopChan)
 	t.wg.Wait()
 
-	// 最终刷新：将缓冲区剩余事件发送到写入队列
-	t.flushToWriter()
+	// 尽量把 collector 的剩余缓冲也处理掉（Stop 场景优先“尽量不丢”而不是“保活”）
+	t.drainCollectorEvents()
+
+	// 最终刷新：将缓冲区剩余事件阻塞写入队列（Stop 场景避免丢批次）
+	t.flushToWriterBlocking()
 
 	// 关闭写入队列，等待 writer 完成所有写入
 	close(t.writeChan)
@@ -133,6 +142,24 @@ func (t *TrackerService) Stop() error {
 	slog.Info("追踪服务已停止")
 
 	return nil
+}
+
+func (t *TrackerService) drainCollectorEvents() {
+	if t == nil || t.collector == nil {
+		return
+	}
+	ch := t.collector.Events()
+	for {
+		select {
+		case ev, ok := <-ch:
+			if !ok {
+				return
+			}
+			t.appendEventNoFlush(ev)
+		default:
+			return
+		}
+	}
 }
 
 // writerLoop 单一写入协程，消费 writeChan 同步写库
@@ -148,9 +175,13 @@ func (t *TrackerService) writerLoop(ctx context.Context) {
 
 		// 同步写入数据库
 		if err := t.eventRepo.BatchInsert(writeCtx, events); err != nil {
+			t.writeErrors.Add(1)
+			t.lastErrorAt.Store(time.Now().UnixMilli())
+			t.lastErrorMsg.Store(err.Error())
 			slog.Error("批量写入事件失败", "count", len(events), "error", err)
 			continue
 		}
+		t.lastPersistAt.Store(time.Now().UnixMilli())
 		slog.Debug("批量写入事件成功", "count", len(events))
 		if t.onWriteSuccess != nil {
 			t.onWriteSuccess(len(events))
@@ -205,11 +236,40 @@ func (t *TrackerService) handleEvent(event *schema.Event) {
 	}
 }
 
+func (t *TrackerService) appendEventNoFlush(event *schema.Event) {
+	if t == nil || event == nil {
+		return
+	}
+	if t.sanitizer != nil {
+		event.Title = t.sanitizer.SanitizeWindowTitle(event.Title)
+	}
+	t.bufferMu.Lock()
+	t.buffer = append(t.buffer, *event)
+	t.bufferMu.Unlock()
+}
+
 // flushToWriter 刷新缓冲区到写入队列（带锁）
 func (t *TrackerService) flushToWriter() {
 	t.bufferMu.Lock()
 	defer t.bufferMu.Unlock()
 	t.flushLockedToWriter()
+}
+
+// flushToWriterBlocking 刷新缓冲区到写入队列（阻塞版本，仅用于 Stop 阶段）
+func (t *TrackerService) flushToWriterBlocking() {
+	t.bufferMu.Lock()
+	defer t.bufferMu.Unlock()
+
+	if len(t.buffer) == 0 {
+		return
+	}
+
+	events := make([]schema.Event, len(t.buffer))
+	copy(events, t.buffer)
+	t.buffer = t.buffer[:0]
+
+	// Stop 阶段阻塞写入，尽量不丢
+	t.writeChan <- events
 }
 
 // flushLockedToWriter 刷新缓冲区到写入队列（无锁版本，调用者必须持有锁）
@@ -225,8 +285,13 @@ func (t *TrackerService) flushLockedToWriter() {
 	// 清空缓冲区
 	t.buffer = t.buffer[:0]
 
-	// 发送到写入队列（有界，满时会阻塞）
-	t.writeChan <- events
+	// 发送到写入队列（有界，满时丢弃以避免阻塞采集链路）
+	select {
+	case t.writeChan <- events:
+	default:
+		t.droppedBatches.Add(1)
+		slog.Warn("事件写入队列已满，丢弃批次", "count", len(events), "queue_cap", t.writeQueueCap)
+	}
 }
 
 // Stats 返回服务统计信息
@@ -235,17 +300,36 @@ func (t *TrackerService) Stats() TrackerStats {
 	defer t.bufferMu.Unlock()
 
 	return TrackerStats{
-		BufferSize:    len(t.buffer),
-		WriteQueueLen: len(t.writeChan),
-		WriteQueueCap: t.writeQueueCap,
-		Running:       t.running.Load(),
+		BufferSize:     len(t.buffer),
+		WriteQueueLen:  len(t.writeChan),
+		WriteQueueCap:  t.writeQueueCap,
+		Running:        t.running.Load(),
+		LastPersistAt:  t.lastPersistAt.Load(),
+		WriteErrors:    t.writeErrors.Load(),
+		DroppedBatches: t.droppedBatches.Load(),
+		LastErrorAt:    t.lastErrorAt.Load(),
+		LastError:      loadAtomicString(&t.lastErrorMsg),
 	}
 }
 
 // TrackerStats 追踪服务统计
 type TrackerStats struct {
-	BufferSize    int
-	WriteQueueLen int
-	WriteQueueCap int
-	Running       bool
+	BufferSize     int
+	WriteQueueLen  int
+	WriteQueueCap  int
+	Running        bool
+	LastPersistAt  int64
+	WriteErrors    int64
+	DroppedBatches int64
+	LastErrorAt    int64
+	LastError      string
+}
+
+func loadAtomicString(v *atomic.Value) string {
+	if v == nil {
+		return ""
+	}
+	raw := v.Load()
+	s, _ := raw.(string)
+	return s
 }

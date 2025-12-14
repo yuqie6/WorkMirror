@@ -1,20 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { GetSessionDetail, GetDiffDetail, GetSessionEvents } from '../../api/app';
-
-export interface SessionDTO {
-    id: number;
-    date: string;
-    start_time: number;
-    end_time: number;
-    time_range: string;
-    primary_app: string;
-    category: string;
-    summary: string;
-    skills_involved: string[];
-    diff_count: number;
-    browser_count: number;
-}
+import type { SessionDTO } from '../../types/session';
 
 interface SessionAppUsageDTO {
     app_name: string;

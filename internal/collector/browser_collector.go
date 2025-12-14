@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	_ "github.com/glebarez/sqlite"
@@ -27,6 +28,9 @@ type BrowserCollector struct {
 	eventChan     chan *schema.BrowserEvent
 	stopChan      chan struct{}
 	running       bool
+
+	lastEmitAt atomic.Int64
+	dropped    atomic.Int64
 }
 
 // BrowserCollectorConfig 配置
@@ -227,14 +231,35 @@ func (c *BrowserCollector) collectHistory() {
 
 		select {
 		case c.eventChan <- event:
+			c.lastEmitAt.Store(unixMilli)
 			count++
 		default:
+			c.dropped.Add(1)
 			slog.Warn("浏览器事件缓冲区已满")
 		}
 	}
 
 	if count > 0 {
 		slog.Debug("采集到浏览器历史", "count", count)
+	}
+}
+
+type BrowserCollectorStats struct {
+	Running     bool   `json:"running"`
+	HistoryPath string `json:"history_path"`
+	LastEmitAt  int64  `json:"last_emit_at"`
+	Dropped     int64  `json:"dropped"`
+}
+
+func (c *BrowserCollector) Stats() BrowserCollectorStats {
+	if c == nil {
+		return BrowserCollectorStats{}
+	}
+	return BrowserCollectorStats{
+		Running:     c.running,
+		HistoryPath: c.historyPath,
+		LastEmitAt:  c.lastEmitAt.Load(),
+		Dropped:     c.dropped.Load(),
 	}
 }
 

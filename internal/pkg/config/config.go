@@ -182,7 +182,13 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("ai.siliconflow.reranker_model", "BAAI/bge-reranker-v2-m3")
 
 	// Privacy
-	v.SetDefault("privacy.enabled", false)
+	v.SetDefault("privacy.enabled", true)
+	v.SetDefault("privacy.patterns", []string{
+		`(?i)\b(email|e-mail)\b[:=]\s*\S+`,
+		`[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}`,
+		`(?i)\b(password|passwd|pwd)\b[:=]\s*\S+`,
+		`(?i)\b(api[_-]?key|token|access[_-]?token|refresh[_-]?token|secret|authorization)\b[:=]\s*\S+`,
+	})
 }
 
 // expandEnv 展开环境变量占位符 ${VAR}

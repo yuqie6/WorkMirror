@@ -40,6 +40,12 @@ func NewAgentRuntime(ctx context.Context, cfgPath string) (*AgentRuntime, error)
 
 	rt := &AgentRuntime{Core: core, Hub: eventbus.NewHub()}
 
+	if core.DB != nil && core.DB.SafeMode {
+		// 安全模式：允许 UI 启动与诊断导出，但不启动任何写库链路（采集/后台任务）。
+		// 具体原因由 /api/status 展示，避免“沉默失败”。
+		return rt, nil
+	}
+
 	sanitizer := privacy.New(core.Cfg.Privacy.Enabled, core.Cfg.Privacy.Patterns)
 
 	// Window collector + tracker

@@ -7,6 +7,9 @@ import SummaryView, { DailySummary, AppStat, SummaryIndex, PeriodSummary, Period
 import SkillView, { SkillNode } from './components/skills/SkillView';
 import TrendsView from './components/dashboard/TrendsView';
 import SettingsView from './components/settings/SettingsView';
+import SessionsView from './components/sessions/SessionsView';
+import StatusView from './components/status/StatusView';
+import { useSystemIndicator } from './hooks/useSystemIndicator';
 
 const normalizePeriodType = (value: string, fallback: 'week' | 'month'): 'week' | 'month' => {
     if (value === 'week' || value === 'month') return value;
@@ -25,7 +28,7 @@ const normalizePeriodSummaryIndex = (
 };
 
 function App() {
-    const [activeTab, setActiveTab] = useState<'summary' | 'skills' | 'trends' | 'settings'>('summary');
+    const [activeTab, setActiveTab] = useState<'summary' | 'sessions' | 'skills' | 'trends' | 'status' | 'settings'>('summary');
     
     // 数据状态
     const [summary, setSummary] = useState<DailySummary | null>(null);
@@ -42,6 +45,7 @@ function App() {
     const [loading, setLoading] = useState(false);
     const [periodLoading, setPeriodLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const { systemIndicator, refreshSystemIndicator } = useSystemIndicator();
 
     // 加载指定日期总结
     const loadSummary = async (date?: string) => {
@@ -138,9 +142,12 @@ function App() {
         const refresh = () => {
             void loadAppStats();
             void loadSummaryIndex();
+            void refreshSystemIndicator();
         };
 
         es.addEventListener("data_changed", refresh);
+        es.addEventListener("settings_updated", refresh as any);
+        es.addEventListener("pipeline_status_changed", refresh as any);
 
         es.onerror = () => {
             // 浏览器会自动重连；避免噪音
@@ -179,10 +186,14 @@ function App() {
                         onReloadPeriodIndex={(type) => { void loadPeriodSummaryIndex(type); }}
                     />
                 );
+            case 'sessions':
+                return <SessionsView />;
             case 'skills':
                 return <SkillView skills={skills} />;
             case 'trends':
                 return <TrendsView />;
+            case 'status':
+                return <StatusView />;
             case 'settings':
                 return <SettingsView />;
             default:
@@ -192,7 +203,7 @@ function App() {
 
     return (
         <ToastProvider>
-            <MainLayout activeTab={activeTab} onTabChange={setActiveTab}>
+            <MainLayout activeTab={activeTab} onTabChange={setActiveTab} systemIndicator={systemIndicator}>
                 {renderContent()}
             </MainLayout>
         </ToastProvider>

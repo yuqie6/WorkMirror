@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"sort"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/yuqie6/mirror/internal/ai"
@@ -20,6 +21,11 @@ type SessionSemanticService struct {
 	eventRepo   EventRepository
 	browserRepo BrowserEventRepository
 	rag         RAGQuerier // 可选
+
+	lastEnrichAt atomic.Int64
+	enrichErrors atomic.Int64
+	lastErrorAt  atomic.Int64
+	lastErrorMsg atomic.Value // string
 }
 
 // SessionSemanticServiceConfig 会话语义服务配置
@@ -81,10 +87,14 @@ func (s *SessionSemanticService) EnrichSessionsIncremental(ctx context.Context, 
 			continue
 		}
 		if err := s.enrichOne(ctx, &sess); err != nil {
+			s.noteError(err)
 			slog.Warn("补全会话语义失败", "id", sess.ID, "error", err)
 			continue
 		}
 		updated++
+	}
+	if updated > 0 {
+		s.lastEnrichAt.Store(time.Now().UnixMilli())
 	}
 	return updated, nil
 }
@@ -108,10 +118,14 @@ func (s *SessionSemanticService) EnrichSessionsForDate(ctx context.Context, date
 			continue
 		}
 		if err := s.enrichOne(ctx, &sess); err != nil {
+			s.noteError(err)
 			slog.Warn("补全会话语义失败", "id", sess.ID, "error", err)
 			continue
 		}
 		updated++
+	}
+	if updated > 0 {
+		s.lastEnrichAt.Store(time.Now().UnixMilli())
 	}
 	return updated, nil
 }
@@ -381,6 +395,36 @@ func (s *SessionSemanticService) enrichOne(ctx context.Context, sess *schema.Ses
 		Metadata:       meta,
 	}
 	return s.sessionRepo.UpdateSemantic(ctx, sess.ID, update)
+}
+
+type SessionSemanticServiceStats struct {
+	LastEnrichAt int64  `json:"last_enrich_at"`
+	EnrichErrors int64  `json:"enrich_errors"`
+	LastErrorAt  int64  `json:"last_error_at"`
+	LastError    string `json:"last_error"`
+}
+
+func (s *SessionSemanticService) Stats() SessionSemanticServiceStats {
+	if s == nil {
+		return SessionSemanticServiceStats{}
+	}
+	raw := s.lastErrorMsg.Load()
+	msg, _ := raw.(string)
+	return SessionSemanticServiceStats{
+		LastEnrichAt: s.lastEnrichAt.Load(),
+		EnrichErrors: s.enrichErrors.Load(),
+		LastErrorAt:  s.lastErrorAt.Load(),
+		LastError:    msg,
+	}
+}
+
+func (s *SessionSemanticService) noteError(err error) {
+	if s == nil || err == nil {
+		return
+	}
+	s.enrichErrors.Add(1)
+	s.lastErrorAt.Store(time.Now().UnixMilli())
+	s.lastErrorMsg.Store(err.Error())
 }
 
 // fallbackSessionCategory 根据证据类型推断会话分类

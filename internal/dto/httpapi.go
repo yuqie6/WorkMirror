@@ -118,8 +118,13 @@ type SettingsDTO struct {
 	SiliconFlowRerankerModel  string `json:"siliconflow_reranker_model"`
 
 	DBPath             string   `json:"db_path"`
+	DiffEnabled        bool     `json:"diff_enabled"`
 	DiffWatchPaths     []string `json:"diff_watch_paths"`
+	BrowserEnabled     bool     `json:"browser_enabled"`
 	BrowserHistoryPath string   `json:"browser_history_path"`
+
+	PrivacyEnabled  bool     `json:"privacy_enabled"`
+	PrivacyPatterns []string `json:"privacy_patterns"`
 }
 
 type SaveSettingsRequestDTO struct {
@@ -133,8 +138,13 @@ type SaveSettingsRequestDTO struct {
 	SiliconFlowRerankerModel  *string `json:"siliconflow_reranker_model"`
 
 	DBPath             *string   `json:"db_path"`
+	DiffEnabled        *bool     `json:"diff_enabled"`
 	DiffWatchPaths     *[]string `json:"diff_watch_paths"`
+	BrowserEnabled     *bool     `json:"browser_enabled"`
 	BrowserHistoryPath *string   `json:"browser_history_path"`
+
+	PrivacyEnabled  *bool     `json:"privacy_enabled"`
+	PrivacyPatterns *[]string `json:"privacy_patterns"`
 }
 
 type SaveSettingsResponseDTO struct {

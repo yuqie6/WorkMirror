@@ -10,11 +10,15 @@ import (
 	"time"
 
 	"github.com/yuqie6/mirror/internal/dto"
+	"github.com/yuqie6/mirror/internal/eventbus"
 	"github.com/yuqie6/mirror/internal/schema"
 	"github.com/yuqie6/mirror/internal/service"
 )
 
 func (a *API) HandleBuildSessionsForDate(w http.ResponseWriter, r *http.Request) {
+	if !a.requireWritableDB(w) {
+		return
+	}
 	var req dto.DateRequestDTO
 	if err := readJSON(r, &req); err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
@@ -36,10 +40,16 @@ func (a *API) HandleBuildSessionsForDate(w http.ResponseWriter, r *http.Request)
 		WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	if a.hub != nil {
+		a.hub.Publish(eventbus.Event{Type: "pipeline_status_changed"})
+	}
 	WriteJSON(w, http.StatusOK, &dto.SessionBuildResultDTO{Created: created})
 }
 
 func (a *API) HandleRebuildSessionsForDate(w http.ResponseWriter, r *http.Request) {
+	if !a.requireWritableDB(w) {
+		return
+	}
 	var req dto.DateRequestDTO
 	if err := readJSON(r, &req); err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
@@ -68,10 +78,16 @@ func (a *API) HandleRebuildSessionsForDate(w http.ResponseWriter, r *http.Reques
 		enriched, _ = a.rt.Core.Services.SessionSemantic.EnrichSessionsForDate(ctx, date, 200)
 	}
 
+	if a.hub != nil {
+		a.hub.Publish(eventbus.Event{Type: "pipeline_status_changed"})
+	}
 	WriteJSON(w, http.StatusOK, &dto.SessionBuildResultDTO{Created: created, Enriched: enriched})
 }
 
 func (a *API) HandleEnrichSessionsForDate(w http.ResponseWriter, r *http.Request) {
+	if !a.requireWritableDB(w) {
+		return
+	}
 	var req dto.DateRequestDTO
 	if err := readJSON(r, &req); err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
@@ -92,6 +108,9 @@ func (a *API) HandleEnrichSessionsForDate(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, err.Error())
 		return
+	}
+	if a.hub != nil {
+		a.hub.Publish(eventbus.Event{Type: "pipeline_status_changed"})
 	}
 	WriteJSON(w, http.StatusOK, &dto.SessionEnrichResultDTO{Enriched: enriched})
 }

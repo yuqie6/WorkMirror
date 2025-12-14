@@ -113,3 +113,23 @@ func (a *API) Subscribe(ctx context.Context, buffer int) <-chan eventbus.Event {
 	}
 	return a.hub.Subscribe(ctx, buffer)
 }
+
+func (a *API) requireWritableDB(w http.ResponseWriter) bool {
+	if a == nil || a.rt == nil || a.rt.Core == nil || a.rt.Core.DB == nil {
+		WriteAPIError(w, http.StatusServiceUnavailable, APIError{
+			Error: "数据库未初始化",
+			Code:  "db_not_ready",
+			Hint:  "请稍后重试；若持续失败，请导出诊断包并检查日志",
+		})
+		return false
+	}
+	if a.rt.Core.DB.SafeMode {
+		WriteAPIError(w, http.StatusServiceUnavailable, APIError{
+			Error: "数据库处于安全模式，已禁用写入操作",
+			Code:  "db_safe_mode",
+			Hint:  "请先在 Status 页查看原因并导出诊断包；修复后重启 Agent",
+		})
+		return false
+	}
+	return true
+}

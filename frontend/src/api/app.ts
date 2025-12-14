@@ -12,10 +12,18 @@ async function requestJSON<T>(url: string, init?: RequestInit): Promise<T> {
     if (!res.ok) {
         const errBody = await res.json().catch(() => null) as any;
         const msg = errBody?.error || res.statusText || `HTTP ${res.status}`;
-        throw new Error(msg);
+        const hint = typeof errBody?.hint === "string" ? errBody.hint.trim() : "";
+        const code = typeof errBody?.code === "string" ? errBody.code.trim() : "";
+        const suffix = [code ? `code=${code}` : "", hint ? `hint=${hint}` : ""].filter(Boolean).join(" ");
+        const full = suffix ? `${msg} (${suffix})` : msg;
+        throw new Error(full);
     }
 
     return await res.json() as T;
+}
+
+export async function GetStatus(): Promise<any> {
+    return requestJSON("/api/status");
 }
 
 export async function GetTodaySummary(force?: boolean): Promise<any> {
