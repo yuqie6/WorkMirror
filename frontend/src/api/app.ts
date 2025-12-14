@@ -1,3 +1,5 @@
+import { todayLocalISODate } from '@/lib/date';
+
 type JSONValue = string | number | boolean | null | JSONValue[] | { [key: string]: JSONValue };
 
 async function requestJSON<T>(url: string, init?: RequestInit): Promise<T> {
@@ -141,6 +143,6 @@ export async function SaveSettings(req: Record<string, JSONValue>): Promise<any>
 export async function BuildSessions(date?: string): Promise<any> {
     const d = typeof date === "string" && date.trim() !== ""
         ? date.trim()
-        : new Date().toISOString().slice(0, 10);
+        : todayLocalISODate();
     return BuildSessionsForDate(d);
 }

@@ -16,6 +16,7 @@ import { Sparkles, Cog, AlertTriangle, ChevronDown, ChevronRight, FileCode, Plus
 import { cn } from '@/lib/utils';
 import { GetSessionsByDate, GetSessionDetail, GetSessionEvents, GetDiffDetail } from '@/api/app';
 import { ISession, SessionDTO, SessionDetailDTO, SessionWindowEventDTO, toISession } from '@/types/session';
+import { parseLocalISODate, todayLocalISODate } from '@/lib/date';
 
 interface DiffDetail {
   id: number;
@@ -30,16 +31,30 @@ interface DiffDetail {
 }
 
 interface SessionsViewProps {
-  targetSessionId?: number | null;
-  onSessionOpened?: () => void;
+  initialDate?: string;
+  selectedSessionId?: number | null;
+  onOpenSession?: (sessionId: number, date: string) => void;
+  onCloseSession?: (date: string) => void;
+  onDateChange?: (date: string, sessionId?: number | null) => void;
 }
 
-export default function SessionsView({ targetSessionId, onSessionOpened }: SessionsViewProps) {
+function parseOrToday(s: string | undefined): string {
+  if (typeof s === 'string' && s.trim() !== '' && parseLocalISODate(s)) return s;
+  return todayLocalISODate();
+}
+
+export default function SessionsView({
+  initialDate,
+  selectedSessionId,
+  onOpenSession,
+  onCloseSession,
+  onDateChange,
+}: SessionsViewProps) {
   const [sessions, setSessions] = useState<ISession[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedSession, setSelectedSession] = useState<SessionDetailDTO | null>(null);
   const [expandedDiffs, setExpandedDiffs] = useState<Set<number>>(new Set());
-  const [currentDate, setCurrentDate] = useState(new Date().toISOString().slice(0, 10));
+  const [currentDate, setCurrentDate] = useState(() => parseOrToday(initialDate));
   
   // 窗口事件
   const [windowEvents, setWindowEvents] = useState<SessionWindowEventDTO[]>([]);
@@ -70,28 +85,38 @@ export default function SessionsView({ targetSessionId, onSessionOpened }: Sessi
     loadSessions();
   }, [currentDate]);
 
-  // 如果有 targetSessionId，自动打开该会话
   useEffect(() => {
-    if (targetSessionId && sessions.length > 0) {
-      const targetSession = sessions.find((s) => s.id === targetSessionId);
-      if (targetSession) {
-        handleSessionClick(targetSession);
-        onSessionOpened?.();
-      }
+    const d = typeof initialDate === 'string' && initialDate.trim() !== '' ? initialDate : '';
+    if (d && d !== currentDate && parseLocalISODate(d)) {
+      setCurrentDate(d);
     }
-  }, [targetSessionId, sessions]);
+  }, [currentDate, initialDate]);
 
-  const handleSessionClick = async (session: ISession) => {
+  const openSessionByID = async (sessionId: number) => {
     try {
-      const detail: SessionDetailDTO = await GetSessionDetail(session.id);
+      const detail: SessionDetailDTO = await GetSessionDetail(sessionId);
       setSelectedSession(detail);
       setExpandedDiffs(new Set());
       setWindowEvents([]);
       setDiffDetails(new Map());
-      loadWindowEvents(session.id);
+      loadWindowEvents(sessionId);
     } catch (e) {
       console.error('Failed to load session detail:', e);
     }
+  };
+
+  // URL 选中态：打开/关闭会话详情
+  useEffect(() => {
+    if (!selectedSessionId) {
+      setSelectedSession(null);
+      return;
+    }
+    void openSessionByID(selectedSessionId);
+  }, [selectedSessionId]);
+
+  const handleSessionClick = async (session: ISession) => {
+    await openSessionByID(session.id);
+    onOpenSession?.(session.id, currentDate);
   };
 
   const loadWindowEvents = async (sessionId: number) => {
@@ -139,9 +164,12 @@ export default function SessionsView({ targetSessionId, onSessionOpened }: Sessi
   };
 
   const navigateDate = (direction: number) => {
-    const date = new Date(currentDate);
-    date.setDate(date.getDate() + direction);
-    setCurrentDate(date.toISOString().slice(0, 10));
+    const base = parseLocalISODate(currentDate) || new Date();
+    base.setDate(base.getDate() + direction);
+    const next = `${base.getFullYear()}-${String(base.getMonth() + 1).padStart(2, '0')}-${String(base.getDate()).padStart(2, '0')}`;
+    setCurrentDate(next);
+    // 切换日期时清空选中态，避免 URL 指向不一致
+    onDateChange?.(next, null);
   };
 
   // 拖拽逻辑
@@ -194,7 +222,7 @@ export default function SessionsView({ targetSessionId, onSessionOpened }: Sessi
             <button 
               onClick={() => navigateDate(1)} 
               className="p-1 hover:text-white transition-colors"
-              disabled={currentDate >= new Date().toISOString().slice(0, 10)}
+              disabled={currentDate >= todayLocalISODate()}
             >
               <ChevronRight size={14} />
             </button>
@@ -228,8 +256,11 @@ export default function SessionsView({ targetSessionId, onSessionOpened }: Sessi
                 </h4>
                 <p className="text-xs text-zinc-500 mt-1 line-clamp-2">{session.summary}</p>
                 {session.evidenceStrength === 'weak' && (
-                  <div className="mt-1 text-[10px] text-amber-500 flex items-center gap-1">
-                    <AlertTriangle size={10} /> 弱证据
+                  <div
+                    title="证据不足：该会话缺少 Diff/浏览等可追溯证据（仍可查看应用时间线）"
+                    className="mt-1 text-[10px] text-amber-500 flex items-center gap-1"
+                  >
+                    <AlertTriangle size={10} /> 证据不足
                   </div>
                 )}
               </div>
@@ -252,6 +283,17 @@ export default function SessionsView({ targetSessionId, onSessionOpened }: Sessi
           <div className="space-y-4">
             {/* 会话头部 */}
             <div className="border-b border-zinc-800 pb-4">
+              <div className="flex justify-end">
+                <button
+                  onClick={() => {
+                    setSelectedSession(null);
+                    onCloseSession?.(currentDate);
+                  }}
+                  className="text-xs text-zinc-500 hover:text-zinc-200 transition-colors"
+                >
+                  返回列表
+                </button>
+              </div>
               <div className="flex items-center gap-2 mb-2">
                 <Badge variant={selectedSession.summary ? 'default' : 'secondary'}>
                   {selectedSession.summary ? 'AI 分析' : '规则生成'}

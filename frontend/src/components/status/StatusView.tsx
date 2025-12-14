@@ -5,6 +5,7 @@ import { StatusDot, StatusType } from '@/components/common/StatusDot';
 import { AlertTriangle, RefreshCw, Download, Play } from 'lucide-react';
 import { GetStatus, RebuildSessionsForDate, EnrichSessionsForDate, BuildSessions } from '@/api/app';
 import { StatusDTO, extractHealthIndicator } from '@/types/status';
+import { todayLocalISODate } from '@/lib/date';
 
 interface CollectorRowProps {
   name: string;
@@ -34,6 +35,7 @@ export default function StatusView() {
   const [status, setStatus] = useState<StatusDTO | null>(null);
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string>(() => todayLocalISODate());
 
   useEffect(() => {
     const loadStatus = async () => {
@@ -53,11 +55,9 @@ export default function StatusView() {
   const handleBuild = async () => {
     setActionLoading(true);
     try {
-      await BuildSessions();
-      alert('会话构建成功！');
-      // 刷新状态
-      const data = await GetStatus();
-      setStatus(data);
+      await BuildSessions(selectedDate);
+      alert(`会话构建成功（${selectedDate}）！`);
+      setStatus(await GetStatus());
     } catch (e) {
       alert(`构建失败: ${e}`);
     } finally {
@@ -66,11 +66,16 @@ export default function StatusView() {
   };
 
   const handleRebuild = async () => {
-    const date = new Date().toISOString().slice(0, 10);
+    const date = selectedDate;
+    const ok = window.confirm(
+      `风险提示：将按日期重建会话（${date}）。\n\n影响：该日期的会话切分/聚合结果将被重算，可能改变技能归因与报告口径。\n建议：必要时先导出诊断包。\n\n确认继续？`
+    );
+    if (!ok) return;
     setActionLoading(true);
     try {
       await RebuildSessionsForDate(date);
-      alert('会话重建成功！');
+      alert(`会话重建成功（${date}）！`);
+      setStatus(await GetStatus());
     } catch (e) {
       alert(`重建失败: ${e}`);
     } finally {
@@ -79,11 +84,16 @@ export default function StatusView() {
   };
 
   const handleEnrich = async () => {
-    const date = new Date().toISOString().slice(0, 10);
+    const date = selectedDate;
+    const ok = window.confirm(
+      `风险提示：将对 ${date} 的会话进行语义增强（可能触发 AI 调用）。\n\n影响：会写入摘要/标签/技能等语义字段；无 AI 配置会降级为规则。\n\n确认继续？`
+    );
+    if (!ok) return;
     setActionLoading(true);
     try {
       await EnrichSessionsForDate(date);
-      alert('AI 增强成功！');
+      alert(`增强成功（${date}）！`);
+      setStatus(await GetStatus());
     } catch (e) {
       alert(`增强失败: ${e}`);
     } finally {
@@ -166,6 +176,19 @@ export default function StatusView() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
+          <div className="flex items-center justify-between bg-zinc-950/50 border border-zinc-800 rounded-lg p-3">
+            <div>
+              <div className="text-sm text-zinc-300 font-medium">操作日期</div>
+              <div className="text-xs text-zinc-500">诊断动作将作用于该自然日</div>
+            </div>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-300 font-mono"
+              max={todayLocalISODate()}
+            />
+          </div>
           <button
             onClick={handleBuild}
             disabled={actionLoading}
@@ -173,7 +196,7 @@ export default function StatusView() {
           >
             <div>
               <div className="text-sm text-emerald-300 font-medium">构建会话</div>
-              <div className="text-xs text-zinc-500">从今日原始数据生成会话（首次使用/无会话时）</div>
+              <div className="text-xs text-zinc-500">从该日原始数据生成会话（首次使用/无会话时）</div>
             </div>
             <Play size={16} className="text-emerald-600 group-hover:text-emerald-400" />
           </button>
@@ -185,7 +208,7 @@ export default function StatusView() {
           >
             <div>
               <div className="text-sm text-zinc-300 font-medium">重建会话</div>
-              <div className="text-xs text-zinc-500">重新切分今日的原始数据</div>
+              <div className="text-xs text-zinc-500">重新切分该日的原始数据（有风险提示）</div>
             </div>
             <RefreshCw size={16} className="text-zinc-600 group-hover:text-zinc-300" />
           </button>
@@ -197,7 +220,7 @@ export default function StatusView() {
           >
             <div>
               <div className="text-sm text-zinc-300 font-medium">增强缺失上下文</div>
-              <div className="text-xs text-zinc-500">对未总结的会话运行 AI 分析</div>
+              <div className="text-xs text-zinc-500">对该日未总结的会话运行 AI 分析（有风险提示）</div>
             </div>
             <RefreshCw size={16} className="text-zinc-600 group-hover:text-indigo-400" />
           </button>

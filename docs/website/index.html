@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Project Mirror - 工程师的工作回顾与证据链工具</title>
-    <meta name="description" content="自动把你每天的真实工作行为整理成可追溯的证据链回顾。Local-first, Privacy-focused.">
+    <title>Project Mirror - 每日自动复盘与日报（本地优先 / Windows 托盘）</title>
+    <meta name="description" content="Windows 托盘常驻，自动生成日报/周报与复盘总结；每条结论都能点开回溯到证据来源。默认本地、可离线、隐私优先。">
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -68,24 +68,29 @@
         .mockup-font { font-family: 'Inter', sans-serif; }
         .conic-gradient-chart {
             background: conic-gradient(
-                #6366f1 0% 47%,   /* Indigo: Antigravity */
-                #0ea5e9 47% 74%,  /* Sky: ShellHost */
-                #f59e0b 74% 82%,  /* Amber: comet */
-                #10b981 82% 89%,  /* Emerald: mirror-ui */
-                #ef4444 89% 100%  /* Rose: Terminal */
+                #6366f1 0% 58%,   /* Indigo: Coding */
+                #0ea5e9 58% 82%,  /* Sky: Reading */
+                #f59e0b 82% 100%  /* Amber: Meeting */
             );
         }
         
         /* Docs Styles */
-        .prose h1 { @apply text-3xl font-bold text-white mb-6 mt-8; }
-        .prose h2 { @apply text-xl font-bold text-white mb-4 mt-8 pb-2 border-b border-zinc-800; }
-        .prose h3 { @apply text-lg font-semibold text-zinc-200 mb-3 mt-6; }
-        .prose p { @apply text-zinc-400 leading-relaxed mb-4; }
-        .prose ul { @apply list-disc list-outside pl-5 space-y-2 text-zinc-400 mb-4; }
-        .prose code { @apply font-mono text-sm bg-zinc-900 px-1.5 py-0.5 rounded text-zinc-300 border border-zinc-800; }
-        .prose pre { @apply bg-zinc-900 p-4 rounded-lg overflow-x-auto border border-zinc-800 mb-6 text-sm text-zinc-300 font-mono; }
-        
-        .nav-active { @apply text-indigo-400 bg-indigo-500/10 border-indigo-500/20; }
+        .prose h1 { font-size: 1.875rem; line-height: 2.25rem; font-weight: 700; color: #ffffff; margin: 2rem 0 1.5rem; }
+        .prose h2 { font-size: 1.25rem; line-height: 1.75rem; font-weight: 700; color: #ffffff; margin: 2rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid #27272a; }
+        .prose h3 { font-size: 1.125rem; line-height: 1.75rem; font-weight: 600; color: #e4e4e7; margin: 1.5rem 0 0.75rem; }
+        .prose p { color: #a1a1aa; line-height: 1.75; margin: 0 0 1rem; }
+        .prose ul { list-style: disc outside; padding-left: 1.25rem; margin: 0 0 1rem; color: #a1a1aa; }
+        .prose li { margin: 0.5rem 0; }
+        .prose code { font-family: 'JetBrains Mono', monospace; font-size: 0.875rem; background: #18181b; padding: 0.125rem 0.375rem; border-radius: 0.375rem; color: #d4d4d8; border: 1px solid #27272a; }
+        .prose pre { background: #18181b; padding: 1rem; border-radius: 0.75rem; overflow-x: auto; border: 1px solid #27272a; margin: 0 0 1.5rem; font-size: 0.875rem; line-height: 1.5rem; color: #d4d4d8; font-family: 'JetBrains Mono', monospace; }
+        .prose figure { margin: 1.5rem 0; }
+        .prose svg { display: block; background: #09090b; border: 1px solid #27272a; border-radius: 0.75rem; }
+        .prose figcaption { color: #71717a; font-size: 0.875rem; margin-top: 0.5rem; }
+        .prose details { background: rgba(24, 24, 27, 0.6); border: 1px solid #27272a; border-radius: 0.75rem; padding: 0.75rem 1rem; margin: 1rem 0; }
+        .prose summary { cursor: pointer; color: #d4d4d8; font-weight: 600; }
+        .prose details[open] summary { margin-bottom: 0.75rem; }
+
+        .nav-active { color: #818cf8; background: rgba(99, 102, 241, 0.1); box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.2); }
     </style>
 </head>
 <body class="bg-zinc-950 text-zinc-200 font-sans antialiased selection:bg-indigo-500/30">
@@ -98,20 +103,18 @@
                     <div class="w-4 h-4 bg-zinc-950 rounded-full"></div>
                 </div>
                 <span class="font-bold text-lg tracking-tight text-white">Project Mirror</span>
-                <span class="hidden sm:inline-block px-2 py-0.5 rounded text-[10px] font-mono bg-zinc-800 text-zinc-400 border border-zinc-700">v0.2-beta</span>
+                <span class="hidden sm:inline-block px-2 py-0.5 rounded text-[10px] font-mono bg-zinc-800 text-zinc-400 border border-zinc-700">v0.2</span>
             </div>
             <div class="flex items-center gap-6">
                 <!-- Logic: 'Features' only scrolls if on home view, otherwise switches to home -->
                 <button onclick="handleNavClick('features')" class="text-sm font-medium text-zinc-400 hover:text-white transition-colors hidden sm:block">特性</button>
                 <button onclick="switchView('docs', 'privacy')" class="text-sm font-medium text-zinc-400 hover:text-white transition-colors hidden sm:block">隐私</button>
-                <button onclick="switchView('docs', 'install')" class="text-sm font-medium text-zinc-400 hover:text-white transition-colors hidden sm:block">文档</button>
-                <a href="https://github.com/your-repo" target="_blank" class="text-zinc-400 hover:text-white transition-colors">
+                <button onclick="switchView('docs', 'overview')" class="text-sm font-medium text-zinc-400 hover:text-white transition-colors hidden sm:block">文档</button>
+                <a href="https://github.com/yuqie6/Mirror" target="_blank" rel="noopener noreferrer" class="text-zinc-400 hover:text-white transition-colors">
                     <!-- Fixed GitHub Icon (Solid Octocat) -->
                     <svg height="20" viewBox="0 0 16 16" version="1.1" width="20" fill="currentColor" aria-hidden="true"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"></path></svg>
                 </a>
-                <a href="#download" class="bg-white text-zinc-950 px-4 py-2 rounded font-medium text-sm hover:bg-zinc-200 transition-colors shadow-[0_0_15px_rgba(255,255,255,0.1)]">
-                    下载 Windows 版
-                </a>
+                <a href="https://github.com/yuqie6/Mirror/releases" target="_blank" rel="noopener noreferrer" class="bg-white text-zinc-950 px-4 py-2 rounded font-medium text-sm hover:bg-zinc-200 transition-colors shadow-[0_0_15px_rgba(255,255,255,0.1)]">下载 Windows 版</a>
             </div>
         </div>
     </nav>
@@ -130,22 +133,22 @@
                 </div>
 
                 <h1 class="text-5xl md:text-7xl font-bold text-white tracking-tight mb-6 max-w-4xl leading-tight animate-slide-up">
-                    别再让你的工作<br>
-                    <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">"沉默流失"</span>
+                    每天自动复盘你的工作<br>
+                    <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">一键生成日报</span>
                 </h1>
 
                 <p class="text-lg text-zinc-400 max-w-2xl mb-10 animate-slide-up" style="animation-delay: 0.1s;">
-                    Project Mirror 自动把你每天的真实编码、浏览与调试行为，整理成可追溯的证据链回顾。
-                    <span class="text-zinc-500">不上传云端，不依赖记忆。</span>
+                    Project Mirror 在后台自动记录你一天的工作痕迹，生成日报/周报与复盘总结。
+                    <span class="text-zinc-500">减少手写记录与回忆成本；每条结论都能点开回溯到来源证据；默认本地、可离线。</span>
                 </p>
 
                 <div class="flex flex-col sm:flex-row gap-4 mb-20 animate-slide-up" style="animation-delay: 0.2s;">
-                    <button class="px-8 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition-all shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2 group">
+                    <a href="https://github.com/yuqie6/Mirror/releases" target="_blank" rel="noopener noreferrer" class="px-8 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition-all shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2 group">
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="group-hover:translate-y-0.5 transition-transform"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
-                        下载 v0.2 Installer
-                    </button>
-                    <button class="px-8 py-3 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-300 rounded-lg font-medium transition-colors font-mono text-sm">
-                        $ winget install project-mirror
+                        下载 Windows 版（Releases）
+                    </a>
+                    <button onclick="switchView('docs', 'install')" class="px-8 py-3 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-300 rounded-lg font-medium transition-colors text-sm">
+                        3 分钟上手
                     </button>
                 </div>
 
@@ -158,7 +161,7 @@
                                 <div class="w-1 h-4 bg-indigo-500 rounded-full"></div>
                                 Project Mirror
                             </span>
-                            <span class="text-[10px] text-zinc-500 font-mono">v0.2-alpha</span>
+                            <span class="text-[10px] text-zinc-500 font-mono">v0.2</span>
                         </div>
                         <div class="flex gap-4">
                             <div class="hidden sm:block text-zinc-600 text-xs">- □ x</div>
@@ -177,7 +180,7 @@
                                 </div>
                                 <div class="flex items-center gap-3 px-3 py-2 text-zinc-400 hover:text-zinc-200 rounded-md text-sm transition-colors">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
-                                    会话流
+                                    片段流
                                 </div>
                                 <div class="flex items-center gap-3 px-3 py-2 text-zinc-400 hover:text-zinc-200 rounded-md text-sm transition-colors">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
@@ -226,9 +229,9 @@
 
                             <!-- Top Row Cards -->
                             <div class="grid grid-cols-3 gap-4 mb-4">
-                                <!-- Card 1: Today Session -->
+                                <!-- Card 1: Today Sessions -->
                                 <div class="bg-zinc-900/50 border border-zinc-800 rounded-lg p-5">
-                                    <div class="text-xs text-zinc-400 mb-2">今日会话</div>
+                                    <div class="text-xs text-zinc-400 mb-2">今日工作片段</div>
                                     <div class="flex items-baseline gap-2 mb-2">
                                         <span class="text-4xl font-bold text-white">57</span>
                                         <span class="text-xs text-zinc-500">/ 30天共 0</span>
@@ -244,9 +247,9 @@
                                     </div>
                                     <div class="text-xs text-amber-500 mb-2 flex items-center gap-1">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
-                                        22 个弱证据会话
+                                        22 个弱证据片段
                                     </div>
-                                    <div class="text-[10px] text-zinc-600">24h: 57 会话 | 有Diff: 35 | 有浏览: 0</div>
+                                    <div class="text-[10px] text-zinc-600">24h: 57 片段 | 有Diff: 35 | 有浏览: 0</div>
                                 </div>
                                 <!-- Card 3: Focus Distribution -->
                                 <div class="bg-zinc-900/50 border border-zinc-800 rounded-lg p-5 flex items-center gap-4">
@@ -257,16 +260,16 @@
                                     <div class="space-y-1 text-[10px] text-zinc-400 flex-1">
                                         <div class="text-xs text-zinc-400 mb-1">专注分布</div>
                                         <div class="flex justify-between">
-                                            <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span> Antigravity</span>
-                                            <span class="font-mono">47%</span>
+                                            <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span> Coding</span>
+                                            <span class="font-mono">58%</span>
                                         </div>
                                         <div class="flex justify-between">
-                                            <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-sky-500"></span> ShellHost</span>
-                                            <span class="font-mono">27%</span>
+                                            <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-sky-500"></span> Reading</span>
+                                            <span class="font-mono">24%</span>
                                         </div>
                                         <div class="flex justify-between">
-                                            <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> comet.exe</span>
-                                            <span class="font-mono">8%</span>
+                                            <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Meeting</span>
+                                            <span class="font-mono">18%</span>
                                         </div>
                                     </div>
                                 </div>
@@ -315,39 +318,39 @@
         <!-- Features Grid (Bento) -->
         <section id="features" class="py-24 bg-zinc-950 relative">
             <div class="max-w-7xl mx-auto px-6">
-                <h2 class="text-3xl font-bold text-white mb-12 text-center">为什么我们需要 <span class="text-indigo-500">证据链</span>？</h2>
+                <h2 class="text-3xl font-bold text-white mb-12 text-center">把 <span class="text-indigo-500">日报与复盘</span> 写得有据可查</h2>
                 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <!-- Card 1: Local First -->
-                    <div class="bg-zinc-900 border border-zinc-800 p-8 rounded-xl hover:border-emerald-500/30 transition-colors group">
-                        <div class="w-12 h-12 bg-emerald-500/10 rounded-lg flex items-center justify-center mb-6 text-emerald-500 group-hover:scale-110 transition-transform">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                        </div>
-                        <h3 class="text-xl font-bold text-white mb-3">100% 本地隐私</h3>
-                        <p class="text-zinc-400 leading-relaxed">
-                            你的代码、Diff 和浏览记录永远不会离开你的电脑。没有云端上传，不需要账号注册。数据安全是我们的底线。
-                        </p>
-                    </div>
-
-                    <!-- Card 2: Git Integration -->
+                    <!-- Card 1: Daily/Weekly -->
                     <div class="bg-zinc-900 border border-zinc-800 p-8 rounded-xl hover:border-indigo-500/30 transition-colors group">
                         <div class="w-12 h-12 bg-indigo-500/10 rounded-lg flex items-center justify-center mb-6 text-indigo-500 group-hover:scale-110 transition-transform">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><line x1="1.05" x2="2.25" y1="12" y2="12"/><line x1="21.75" x2="22.95" y1="12" y2="12"/><line x1="12" x2="12" y1="1.05" y2="2.25"/><line x1="12" x2="12" y1="21.75" y2="22.95"/></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/></svg>
                         </div>
-                        <h3 class="text-xl font-bold text-white mb-3">全自动行为采集</h3>
+                        <h3 class="text-xl font-bold text-white mb-3">自动日报/周报与复盘</h3>
                         <p class="text-zinc-400 leading-relaxed">
-                            不仅是"你打开了什么窗口"，Project Mirror 还会监控文件系统的 Diff 变化。无论你是否 Commit，每一行代码变更都会被记录。
+                            不靠记忆拼凑“今天做了什么”。系统会把一天拆成多个工作片段并生成摘要，也支持按周/周期聚合回顾，帮助你快速回看投入、成果与变化。
                         </p>
                     </div>
 
-                    <!-- Card 3: AI Attribution -->
+                    <!-- Card 2: Evidence -->
+                    <div class="bg-zinc-900 border border-zinc-800 p-8 rounded-xl hover:border-emerald-500/30 transition-colors group">
+                        <div class="w-12 h-12 bg-emerald-500/10 rounded-lg flex items-center justify-center mb-6 text-emerald-500 group-hover:scale-110 transition-transform">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        </div>
+                        <h3 class="text-xl font-bold text-white mb-3">每条结论都能回溯</h3>
+                        <p class="text-zinc-400 leading-relaxed">
+                            不是“凭感觉”的总结。你可以点开看到每个工作片段的证据覆盖率与明细（代码变更、窗口行为、浏览历史等），把复盘变得可验证。
+                        </p>
+                    </div>
+
+                    <!-- Card 3: Local-first -->
                     <div class="bg-zinc-900 border border-zinc-800 p-8 rounded-xl hover:border-amber-500/30 transition-colors group">
                         <div class="w-12 h-12 bg-amber-500/10 rounded-lg flex items-center justify-center mb-6 text-amber-500 group-hover:scale-110 transition-transform">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" x2="12" y1="22.08" y2="12"/></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
                         </div>
-                        <h3 class="text-xl font-bold text-white mb-3">智能技能归因</h3>
+                        <h3 class="text-xl font-bold text-white mb-3">默认本地，离线也能用</h3>
                         <p class="text-zinc-400 leading-relaxed">
-                            基于你的实际行为生成技能树。AI 自动分析你的工作内容，告诉你这周是在"重构代码"还是在"摸鱼"。支持离线 LLM。
+                            所有数据默认写入本地 SQLite；本地服务仅监听 <span class="font-mono text-zinc-300">127.0.0.1</span>。不配 AI Key 也能生成规则版摘要；配置 AI 后再获得更强的语义化总结与建议。
                         </p>
                     </div>
                 </div>
@@ -367,15 +370,15 @@
                             </li>
                             <li class="flex items-start gap-3">
                                 <span class="mt-1 text-emerald-500"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
-                                <span class="text-zinc-300"><strong>Git Diff Watcher:</strong> 自动监听指定目录的文件变更，无需手动 Commit。</span>
+                                <span class="text-zinc-300"><strong>Git Diff 采集:</strong> 监听你配置的项目目录，捕获保存到磁盘的变更（无需 Commit）。</span>
                             </li>
                             <li class="flex items-start gap-3">
                                 <span class="mt-1 text-emerald-500"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
-                                <span class="text-zinc-300"><strong>Local API:</strong> 内置本地 HTTP Server，支持自定义脚本扩展。</span>
+                                <span class="text-zinc-300"><strong>本地 API + SSE:</strong> 内置本地 HTTP Server（随机端口），UI 与状态页实时刷新，便于二次集成。</span>
                             </li>
                             <li class="flex items-start gap-3">
                                 <span class="mt-1 text-emerald-500"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
-                                <span class="text-zinc-300"><strong>离线可用:</strong> 无网环境下自动降级为规则模式，不影响数据记录。</span>
+                                <span class="text-zinc-300"><strong>拒绝沉默失败:</strong> 内置状态页与诊断包导出，空态/异常会告诉你缺口在哪一层，以及下一步怎么修。</span>
                             </li>
                         </ul>
                     </div>
@@ -386,16 +389,20 @@
                             <span class="text-emerald-500">●</span>
                         </div>
                         <pre><span class="text-purple-400">const</span> <span class="text-blue-400">projectMirror</span> = {
-  <span class="text-zinc-200">version</span>: <span class="text-emerald-400">"0.2.0"</span>,
+  <span class="text-zinc-200">version</span>: <span class="text-emerald-400">"0.x"</span>,
   <span class="text-zinc-200">platform</span>: <span class="text-emerald-400">"win32"</span>,
   <span class="text-zinc-200">collectors</span>: [
-    <span class="text-emerald-400">"WindowWatcher"</span>,
-    <span class="text-emerald-400">"GitDiffObserver"</span>, 
-    <span class="text-emerald-400">"BrowserExtension"</span>
+    <span class="text-emerald-400">"Window"</span>,
+    <span class="text-emerald-400">"GitDiff"</span>,
+    <span class="text-emerald-400">"BrowserHistory"</span>
   ],
+  <span class="text-zinc-200">http</span>: {
+    <span class="text-zinc-200">listen</span>: <span class="text-emerald-400">"127.0.0.1:&lt;random&gt;"</span>,
+    <span class="text-zinc-200">discovery</span>: <span class="text-emerald-400">"./data/http_base_url.txt"</span>
+  },
   <span class="text-zinc-200">privacy</span>: {
     <span class="text-zinc-200">cloudSync</span>: <span class="text-rose-400">false</span>,
-    <span class="text-zinc-200">dataStorage</span>: <span class="text-emerald-400">"./data/db.sqlite"</span>
+    <span class="text-zinc-200">dataStorage</span>: <span class="text-emerald-400">"./data/mirror.db"</span>
   }
 };</pre>
                     </div>
@@ -408,13 +415,16 @@
     <main id="view-docs" class="hidden min-h-screen pt-16">
         <div class="flex max-w-7xl mx-auto">
             <!-- Sidebar -->
-            <aside class="w-64 fixed h-[calc(100vh-4rem)] overflow-y-auto border-r border-zinc-800 bg-zinc-950 p-6 hidden lg:block">
-                <div class="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-4">Documentation</div>
-                <div class="space-y-1 mb-8">
-                    <button onclick="showDoc('install')" id="nav-install" class="w-full text-left px-3 py-2 text-sm text-zinc-400 rounded-md hover:text-white hover:bg-zinc-900 transition-colors">快速开始</button>
-                    <button onclick="showDoc('config')" id="nav-config" class="w-full text-left px-3 py-2 text-sm text-zinc-400 rounded-md hover:text-white hover:bg-zinc-900 transition-colors">配置指南</button>
-                    <button onclick="showDoc('faq')" id="nav-faq" class="w-full text-left px-3 py-2 text-sm text-zinc-400 rounded-md hover:text-white hover:bg-zinc-900 transition-colors">常见问题</button>
-                </div>
+	            <aside class="w-64 fixed h-[calc(100vh-4rem)] overflow-y-auto border-r border-zinc-800 bg-zinc-950 p-6 hidden lg:block">
+	                <div class="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-4">使用指南</div>
+	                <div class="space-y-1 mb-8">
+	                    <button onclick="showDoc('overview')" id="nav-overview" class="w-full text-left px-3 py-2 text-sm text-zinc-400 rounded-md hover:text-white hover:bg-zinc-900 transition-colors">了解 Project Mirror</button>
+	                    <button onclick="showDoc('architecture')" id="nav-architecture" class="w-full text-left px-3 py-2 text-sm text-zinc-400 rounded-md hover:text-white hover:bg-zinc-900 transition-colors">工作原理（高级）</button>
+	                    <button onclick="showDoc('install')" id="nav-install" class="w-full text-left px-3 py-2 text-sm text-zinc-400 rounded-md hover:text-white hover:bg-zinc-900 transition-colors">快速开始</button>
+	                    <button onclick="showDoc('config')" id="nav-config" class="w-full text-left px-3 py-2 text-sm text-zinc-400 rounded-md hover:text-white hover:bg-zinc-900 transition-colors">设置与隐私</button>
+	                    <button onclick="showDoc('api')" id="nav-api" class="w-full text-left px-3 py-2 text-sm text-zinc-400 rounded-md hover:text-white hover:bg-zinc-900 transition-colors">本地接口（高级）</button>
+	                    <button onclick="showDoc('faq')" id="nav-faq" class="w-full text-left px-3 py-2 text-sm text-zinc-400 rounded-md hover:text-white hover:bg-zinc-900 transition-colors">常见问题</button>
+	                </div>
 
                 <div class="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-4">Legal</div>
                 <div class="space-y-1">
@@ -424,68 +434,298 @@
             </aside>
 
             <!-- Mobile Nav Toggle (Visible only on small screens) -->
-            <div class="lg:hidden p-4 border-b border-zinc-800 bg-zinc-950 w-full sticky top-16 z-40">
-                <select onchange="showDoc(this.value)" class="w-full bg-zinc-900 border border-zinc-800 text-zinc-300 rounded p-2 text-sm">
-                    <option value="install">快速开始</option>
-                    <option value="config">配置指南</option>
-                    <option value="privacy">隐私策略</option>
-                </select>
-            </div>
+	            <div class="lg:hidden p-4 border-b border-zinc-800 bg-zinc-950 w-full sticky top-16 z-40">
+	                <select onchange="showDoc(this.value)" class="w-full bg-zinc-900 border border-zinc-800 text-zinc-300 rounded p-2 text-sm">
+	                    <option value="overview">了解 Project Mirror</option>
+	                    <option value="architecture">工作原理（高级）</option>
+	                    <option value="install">快速开始</option>
+	                    <option value="config">设置与隐私</option>
+	                    <option value="api">本地接口（高级）</option>
+	                    <option value="faq">常见问题</option>
+	                    <option value="privacy">隐私策略</option>
+	                    <option value="terms">服务条款</option>
+	                </select>
+	            </div>
 
             <!-- Content Area -->
             <div class="flex-1 lg:pl-64 w-full">
                 <div class="max-w-3xl mx-auto px-6 py-12 prose">
                     
-                    <!-- DOC: INSTALL -->
+	                    <!-- DOC: INSTALL -->
+	                    <article id="doc-overview" class="doc-content hidden">
+	                        <h1>了解 Project Mirror</h1>
+	                        <p>Project Mirror 是一个 Windows 托盘常驻的本地回顾工具：自动收集你电脑上的工作“痕迹”（窗口、代码变更、浏览历史），整理成可追溯的工作片段，并生成日报/周报与技能变化。</p>
+
+	                        <h2>你能得到什么</h2>
+	                        <ul>
+	                            <li>每天/每周的回顾：每条结论都能点开看到证据覆盖与明细。</li>
+	                            <li>技能树与能力变化：增长来源可追溯到贡献的工作片段。</li>
+	                            <li>离线也能用：不配 AI Key 也能生成规则版摘要与回顾。</li>
+	                            <li>遇到“空白页/没数据”也不需要找作者：状态页会告诉你缺口在哪一层，并给出下一步怎么修。</li>
+	                        </ul>
+
+	                        <h2>隐私与本地优先</h2>
+	                        <ul>
+	                            <li>数据默认写入本地 SQLite（默认 <code>./data/mirror.db</code>），不做云同步/账号体系。</li>
+	                            <li>本地 HTTP 仅监听 <code>127.0.0.1</code>，端口随机分配。</li>
+	                            <li>启用 AI 时仅发送脱敏后的最小必要文本，用于生成摘要与建议。</li>
+	                        </ul>
+
+	                        <h2>它以什么形式运行（v0.2）</h2>
+	                        <ul>
+	                            <li><code>mirror.exe</code>（Windows 10/11 托盘常驻）</li>
+	                            <li>内置本地 HTTP Server（随机端口，仅监听 <code>127.0.0.1</code>）</li>
+	                            <li>内置 Web UI（React/Vite SPA，优先加载同目录 <code>frontend/dist/</code>，否则回退内嵌资源）</li>
+	                            <li>端口发现：写入 <code>./data/http_base_url.txt</code></li>
+	                        </ul>
+
+	                        <h2>它怎么工作（简述）</h2>
+	                        <p>采集 → 生成工作片段（切分/聚合/摘要）→ 汇总到技能与回顾 → 每条结论可点开证据链。</p>
+
+	                        <h2>目前不包含什么</h2>
+	                        <ul>
+	                            <li>云同步/账号体系/团队协作</li>
+	                            <li>macOS/Linux（当前阶段）</li>
+	                            <li>复杂目标管理（TODO/OKR/习惯）</li>
+	                        </ul>
+	                    </article>
+
+	                    <article id="doc-architecture" class="doc-content hidden">
+	                        <h1>工作原理（高级）</h1>
+	                        <p>下面两张图展示 Project Mirror 在本机如何运行，以及“证据 → 工作片段（会话） → 回顾/技能”的口径链路。</p>
+
+                        <h2>运行时组件图</h2>
+                        <figure>
+                            <svg viewBox="0 0 900 360" width="100%" role="img" aria-label="Project Mirror 运行时组件图">
+                                <rect x="20" y="20" width="520" height="320" rx="14" fill="#0b0b0f" stroke="#27272a" />
+                                <text x="40" y="52" fill="#ffffff" font-size="18" font-family="Inter, sans-serif" font-weight="700">mirror.exe（Windows 托盘常驻）</text>
+                                <text x="40" y="78" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">单进程：采集 → 入库 → 会话/归因 → 本地 HTTP（API + SSE + UI 静态资源）</text>
+
+                                <rect x="40" y="110" width="240" height="90" rx="12" fill="#111113" stroke="#27272a" />
+                                <text x="56" y="140" fill="#e4e4e7" font-size="14" font-family="Inter, sans-serif" font-weight="600">Collectors</text>
+                                <text x="56" y="166" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">Window / GitDiff / BrowserHistory</text>
+
+                                <rect x="300" y="110" width="220" height="90" rx="12" fill="#111113" stroke="#27272a" />
+                                <text x="316" y="140" fill="#e4e4e7" font-size="14" font-family="Inter, sans-serif" font-weight="600">SQLite（WAL）</text>
+                                <text x="316" y="166" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">repository + schema_version 门闸</text>
+
+                                <rect x="40" y="220" width="240" height="90" rx="12" fill="#111113" stroke="#27272a" />
+                                <text x="56" y="250" fill="#e4e4e7" font-size="14" font-family="Inter, sans-serif" font-weight="600">Services</text>
+                                <text x="56" y="276" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">会话切分 / Skill 归因 / 回顾生成</text>
+
+                                <rect x="300" y="220" width="220" height="90" rx="12" fill="#111113" stroke="#27272a" />
+                                <text x="316" y="250" fill="#e4e4e7" font-size="14" font-family="Inter, sans-serif" font-weight="600">Local HTTP</text>
+                                <text x="316" y="276" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">JSON API + SSE + 静态 UI</text>
+
+                                <defs>
+                                    <marker id="arrow" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto">
+                                        <path d="M0,0 L0,6 L8,3 z" fill="#52525b"></path>
+                                    </marker>
+                                </defs>
+
+                                <path d="M280 155 L300 155" stroke="#52525b" stroke-width="2" marker-end="url(#arrow)" />
+                                <path d="M160 220 L160 200" stroke="#52525b" stroke-width="2" marker-end="url(#arrow)" />
+                                <path d="M280 265 L300 265" stroke="#52525b" stroke-width="2" marker-end="url(#arrow)" />
+                                <path d="M410 200 L410 220" stroke="#52525b" stroke-width="2" marker-end="url(#arrow)" />
+
+                                <rect x="580" y="110" width="300" height="90" rx="12" fill="#0b0b0f" stroke="#27272a" />
+                                <text x="600" y="140" fill="#ffffff" font-size="14" font-family="Inter, sans-serif" font-weight="600">Browser / WebView（本地 UI）</text>
+                                <text x="600" y="166" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">读取本地 API + SSE，展示 Dashboard/Sessions/Skills/Status</text>
+
+                                <path d="M520 265 L580 155" stroke="#52525b" stroke-width="2" marker-end="url(#arrow)" />
+
+                                <rect x="580" y="220" width="300" height="90" rx="12" fill="#0b0b0f" stroke="#27272a" stroke-dasharray="6 6" />
+                                <text x="600" y="250" fill="#e4e4e7" font-size="14" font-family="Inter, sans-serif" font-weight="600">UI 静态资源加载优先级</text>
+                                <text x="600" y="276" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">同目录 frontend/dist/ → 内嵌 internal/uiassets</text>
+                                <path d="M520 290 L580 265" stroke="#52525b" stroke-width="2" marker-end="url(#arrow)" />
+                            </svg>
+                            <figcaption>图：单进程本地架构（仅监听 127.0.0.1），UI 与 API 同源服务。</figcaption>
+                        </figure>
+
+                        <h2>证据链流水线图（口径）</h2>
+                        <figure>
+                            <svg viewBox="0 0 900 300" width="100%" role="img" aria-label="Project Mirror 证据链流水线图">
+                                <defs>
+                                    <marker id="arrow2" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto">
+                                        <path d="M0,0 L0,6 L8,3 z" fill="#52525b"></path>
+                                    </marker>
+                                </defs>
+
+                                <rect x="20" y="30" width="210" height="70" rx="12" fill="#111113" stroke="#27272a" />
+                                <text x="40" y="60" fill="#e4e4e7" font-size="14" font-family="Inter, sans-serif" font-weight="600">Raw Evidence</text>
+                                <text x="40" y="84" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">WindowEvent / Diff / BrowserEvent</text>
+
+                                <rect x="260" y="30" width="200" height="70" rx="12" fill="#111113" stroke="#27272a" />
+                                <text x="280" y="60" fill="#e4e4e7" font-size="14" font-family="Inter, sans-serif" font-weight="600">会话切分（Sessionization）</text>
+                                <text x="280" y="84" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">切分 + 聚合 + 覆盖率统计</text>
+
+                                <rect x="490" y="30" width="190" height="70" rx="12" fill="#111113" stroke="#27272a" />
+                                <text x="510" y="60" fill="#e4e4e7" font-size="14" font-family="Inter, sans-serif" font-weight="600">会话（权威口径）</text>
+                                <text x="510" y="84" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">所有上层口径统一输入</text>
+
+                                <rect x="710" y="20" width="170" height="90" rx="12" fill="#0b0b0f" stroke="#27272a" />
+                                <text x="728" y="52" fill="#ffffff" font-size="14" font-family="Inter, sans-serif" font-weight="600">Outputs</text>
+                                <text x="728" y="76" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">Skill / Daily / Weekly</text>
+                                <text x="728" y="98" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">可点开证据链</text>
+
+                                <path d="M230 65 L260 65" stroke="#52525b" stroke-width="2" marker-end="url(#arrow2)" />
+                                <path d="M460 65 L490 65" stroke="#52525b" stroke-width="2" marker-end="url(#arrow2)" />
+                                <path d="M680 65 L710 65" stroke="#52525b" stroke-width="2" marker-end="url(#arrow2)" />
+
+                                <rect x="260" y="150" width="200" height="60" rx="12" fill="#0b0b0f" stroke="#27272a" />
+                                <text x="280" y="178" fill="#e4e4e7" font-size="13" font-family="Inter, sans-serif" font-weight="600">离线规则口径（默认）</text>
+                                <text x="280" y="200" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">无 AI Key 仍能产出摘要/回顾</text>
+
+                                <rect x="490" y="150" width="200" height="60" rx="12" fill="#0b0b0f" stroke="#27272a" />
+                                <text x="510" y="178" fill="#e4e4e7" font-size="13" font-family="Inter, sans-serif" font-weight="600">AI 增强（可选）</text>
+                                <text x="510" y="200" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">语义摘要/标签/建议（脱敏后）</text>
+
+                                <path d="M360 100 L360 150" stroke="#52525b" stroke-width="2" marker-end="url(#arrow2)" />
+                                <path d="M590 100 L590 150" stroke="#52525b" stroke-width="2" marker-end="url(#arrow2)" />
+                                <path d="M460 180 L490 180" stroke="#52525b" stroke-width="2" marker-end="url(#arrow2)" />
+
+                                <rect x="20" y="150" width="210" height="120" rx="12" fill="#0b0b0f" stroke="#27272a" stroke-dasharray="6 6" />
+                                <text x="40" y="178" fill="#e4e4e7" font-size="13" font-family="Inter, sans-serif" font-weight="600">可观测性 / 诊断</text>
+                                <text x="40" y="204" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">/api/status</text>
+                                <text x="40" y="228" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">/api/diagnostics/export</text>
+                                <text x="40" y="252" fill="#a1a1aa" font-size="12" font-family="Inter, sans-serif">重建会话 / 补全语义</text>
+                                <path d="M125 100 L125 150" stroke="#52525b" stroke-width="2" marker-end="url(#arrow2)" />
+                            </svg>
+                            <figcaption>图：会话为权威输入；离线规则默认可用，AI 作为可选增强；失败路径通过状态与诊断动作显式暴露。</figcaption>
+                        </figure>
+
+	                        <details>
+	                            <summary>开发者：目录结构（Go / React）</summary>
+	                            <ul>
+	                                <li><code>cmd/mirror-agent/</code>：Windows Agent 入口（托盘、采集器、HTTP API/UI）</li>
+	                                <li><code>internal/collector/</code>：采集器（窗口/Diff/浏览历史）</li>
+	                                <li><code>internal/server/</code>：本地 HTTP Server（JSON API + SSE + 静态 UI）</li>
+	                                <li><code>internal/service/</code>：Session/Skill/回顾等业务逻辑</li>
+	                                <li><code>internal/repository/</code>：SQLite 数据访问与迁移门闸（<code>schema_version</code>）</li>
+	                                <li><code>frontend/</code>：前端源码（开发时通过 <code>VITE_API_TARGET</code> 指向本地 Agent）</li>
+	                            </ul>
+	                        </details>
+
+	                        <h2>口径说明</h2>
+	                        <p>上层的技能/回顾不直接从 raw 统计，而是统一以会话为输入，保证“同一套数字、同一条证据链”。</p>
+
+	                        <h2>出了问题怎么自助排查</h2>
+	                        <p>当数据为空/不可信时，优先从状态页定位缺口（采集/切分/分析/配置），并按提示执行：补配 watch paths、重建某天会话、导出诊断包等。</p>
+	                    </article>
+
                     <article id="doc-install" class="doc-content">
                         <div class="flex items-center gap-2 text-emerald-500 text-sm font-medium mb-2">
                             <span class="w-2 h-2 rounded-full bg-emerald-500"></span> 推荐阅读
                         </div>
                         <h1>快速开始</h1>
-                        <p>Project Mirror 是一个<strong>零配置</strong>的 Windows 托盘应用。只需 3 步即可开始构建你的工作证据链。</p>
+                        <p>Project Mirror 是一个 Windows 托盘常驻 Agent + 本地 Web UI。目标是让新用户在 <strong>10 分钟</strong>完成闭环：配置 watch paths → 看到当天会话 → 能点开证据。</p>
                         
-                        <h2>1. 安装</h2>
-                        <p>推荐使用 winget 安装最新版本，或直接从 GitHub Releases 下载 msi 安装包。</p>
-                        <pre>winget install project-mirror</pre>
+                        <h2>1. 获取程序</h2>
+                        <p>推荐从 GitHub Releases 下载 Windows 版本；或从源码构建（需 Go 1.25.4，且仅支持 Windows 构建）。</p>
+                        <pre>go build -trimpath -ldflags "-H=windowsgui -s -w" -o .\mirror.exe .\cmd\mirror-agent\</pre>
+                        <p>说明：上述命令会构建为 GUI 子系统，运行时不会弹出前台控制台窗口。</p>
                         
                         <h2>2. 初始化</h2>
                         <p>首次运行后，Project Mirror 会最小化到系统托盘。右键点击图标选择 <strong>"打开面板"</strong>。</p>
                         <ul>
-                            <li>默认数据存储路径：<code>%APPDATA%\ProjectMirror\db</code></li>
-                            <li>默认监听端口：<code>127.0.0.1:4120</code></li>
+                            <li>默认数据库：<code>./data/mirror.db</code>（相对路径以可执行文件目录为基准）</li>
+                            <li>本地 HTTP：只监听 <code>127.0.0.1</code>，端口为随机分配</li>
+                            <li>端口发现：启动后写入 <code>./data/http_base_url.txt</code></li>
                         </ul>
+                        <p>推荐“便携分发”：一个 <code>mirror.exe</code> + 同目录 <code>config/</code> 与 <code>data/</code>。</p>
 
                         <h2>3. 配置监听目录</h2>
-                        <p>为了让 Diff Collector 生效，你需要在设置页添加你的工作区目录：</p>
+                        <p>为了让 Diff Collector 生效，你需要在设置页添加你的 Git 项目目录（watch paths）：</p>
                         <pre>C:\Users\Dev\Projects\Go-Backend</pre>
+                        <p>可选：启用浏览器采集（自动探测 Chrome/Edge History 路径），并保持隐私脱敏默认开启。</p>
+                    </article>
+
+	                    <!-- DOC: API -->
+	                    <article id="doc-api" class="doc-content hidden">
+	                        <h1>本地接口（高级）</h1>
+	                        <p>本地 HTTP 仅监听 <code>127.0.0.1</code>，端口随机分配（见 <code>./data/http_base_url.txt</code>）。</p>
+
+                        <h2>状态与可观测性（P0）</h2>
+                        <ul>
+                            <li><code>GET /api/status</code>：采集/管道/AI/最近错误的汇总快照</li>
+                            <li><code>GET /api/events</code>：SSE（数据变更/配置变更等事件）</li>
+                        </ul>
+
+                        <h2>维护动作</h2>
+                        <ul>
+                            <li><code>POST /api/maintenance/sessions/rebuild</code>：按日期重建会话</li>
+                            <li><code>POST /api/maintenance/sessions/enrich</code>：按日期补全语义（启用 AI 时）</li>
+                            <li><code>GET /api/diagnostics/export</code>：导出脱敏诊断包（zip）</li>
+                        </ul>
+                    </article>
+
+                    <!-- DOC: FAQ -->
+                    <article id="doc-faq" class="doc-content hidden">
+                        <h1>常见问题</h1>
+
+                        <h2>需要联网吗？</h2>
+                        <p>不需要。未配置 AI Key 时，Project Mirror 会以规则口径生成会话摘要与回顾；配置 AI 后，仅在需要语义化摘要/建议时调用外部提供商。</p>
+
+                        <h2>为什么页面为空/没有数据？</h2>
+                        <ul>
+                            <li>先打开 <code>/status</code>（或状态页入口）查看采集健康与最近错误。</li>
+                            <li>Diff 采集需要配置 <code>diff.watch_paths</code>（或在设置/引导里选择项目目录）。</li>
+                            <li>浏览器采集依赖本地 History 文件路径；可在设置中查看自动探测结果并手动指定。</li>
+                        </ul>
+
+                        <h2>支持 macOS/Linux/手机吗？</h2>
+                        <p>当前阶段只支持 Windows 10/11，且不提供云同步/账号体系。</p>
+
+                        <h2>如何导出诊断信息？</h2>
+                        <p>在状态页使用“导出诊断包”，或访问 <code>/api/diagnostics/export</code> 下载脱敏后的 zip。</p>
                     </article>
 
                     <!-- DOC: PRIVACY -->
                     <article id="doc-privacy" class="doc-content hidden">
                         <h1>隐私策略</h1>
-                        <p>最后更新：2023年10月24日</p>
-                        <p>我们深知工程师对数据的敏感性。Project Mirror 遵循 <strong>"Local-First"</strong> 原则设计。</p>
+                        <p>最后更新：2025年12月</p>
+                        <p>Project Mirror 遵循 <strong>Local-first &amp; Privacy by default</strong>：默认本地存储、默认脱敏、默认可离线。</p>
                         
                         <h2>数据存储</h2>
-                        <p>所有采集的数据（包括但不限于应用活动、文件差异、浏览历史）均存储在您计算机的本地 SQLite 数据库中。我们没有服务器，也不会上传任何数据。</p>
+                        <p>采集数据（窗口事件、Diff、浏览历史等）会写入本地 SQLite 数据库（默认 <code>./data/mirror.db</code>）。本地 HTTP 仅监听 <code>127.0.0.1</code>，不会暴露到局域网/公网。</p>
+
+                        <h2>默认脱敏</h2>
+                        <p>默认开启脱敏：URL 会清空 query/fragment 并保留域名与“存在路径”的事实；窗口标题/浏览标题会按规则替换敏感片段。你可以在配置中调整 <code>privacy.patterns</code>。</p>
                         
                         <h2>AI 处理</h2>
-                        <p>默认情况下，Project Mirror 使用离线规则引擎。如果您配置了 OpenAI API Key，数据仅在生成周报时发送给 LLM 提供商，且会经过 PII（个人敏感信息）脱敏处理。</p>
+                        <p>不配置任何 Key 时，不会调用外部 AI。启用 AI 后，仅在需要生成语义摘要/建议时发送经脱敏的最小必要文本到你配置的提供商（例如 DeepSeek / SiliconFlow）。</p>
                     </article>
 
                     <!-- DOC: CONFIG -->
                     <article id="doc-config" class="doc-content hidden">
-                        <h1>配置指南</h1>
-                        <p>高级用户可以通过修改 <code>config.json</code> 来自定义采集行为。</p>
-                        <h2>忽略名单</h2>
-                        <p>在 <code>ignore_apps</code> 列表中添加不需要记录的应用进程名：</p>
-                        <pre>{
-  "collectors": {
-    "window": {
-      "ignore_apps": ["Spotify.exe", "Steam.exe"]
-    }
-  }
-}</pre>
+                        <h1>设置与隐私</h1>
+                        <p>配置文件为 YAML：默认路径 <code>./config/config.yaml</code>（首次启动会自动生成）。可以参考模板 <code>./config/config.yaml.example</code>。</p>
+
+                        <h2>你大概率只需要改这几项</h2>
+                        <pre>diff:
+  enabled: true
+  watch_paths:
+    - "C:\\Users\\Dev\\Projects\\Go-Backend"
+
+browser:
+  enabled: true
+  history_path: "" # 为空则自动探测
+
+storage:
+  db_path: "./data/mirror.db"
+
+privacy:
+  enabled: true</pre>
+
+                        <h2>AI Key 与环境变量</h2>
+                        <p>建议通过环境变量注入 Key（避免写入磁盘/提交仓库），例如 <code>DEEPSEEK_API_KEY</code>、<code>SILICONFLOW_API_KEY</code>。</p>
+                    </article>
+
+                    <!-- DOC: TERMS -->
+                    <article id="doc-terms" class="doc-content hidden">
+                        <h1>服务条款</h1>
+                        <p>Project Mirror 是开源软件（MIT License），按“现状”提供，不对适用性或无缺陷作任何保证。你在本机使用时产生的任何数据与后果由你自行承担。</p>
+                        <p>本项目不提供云服务、不提供账号体系；本地 HTTP 服务仅用于本机 UI 与本地集成。</p>
                     </article>
 
                 </div>
@@ -503,11 +743,11 @@
                 <span class="font-bold text-zinc-500">Project Mirror</span>
             </div>
             <div class="text-sm text-zinc-500">
-                &copy; 2023-2024 Project Mirror. Built for Engineers.
+                &copy; 2025 Project Mirror. Built for Engineers.
             </div>
             <div class="flex gap-6">
-                <a href="#" onclick="switchView('docs', 'install')" class="text-zinc-500 hover:text-white transition-colors">Documentation</a>
-                <a href="https://github.com/your-repo" class="text-zinc-500 hover:text-white transition-colors">GitHub</a>
+                <a href="#" onclick="switchView('docs', 'overview')" class="text-zinc-500 hover:text-white transition-colors">Documentation</a>
+                <a href="https://github.com/yuqie6/Mirror" target="_blank" rel="noopener noreferrer" class="text-zinc-500 hover:text-white transition-colors">GitHub</a>
                 <a href="#" onclick="switchView('docs', 'privacy')" class="text-zinc-500 hover:text-white transition-colors">Privacy Policy</a>
             </div>
         </div>

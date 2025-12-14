@@ -139,10 +139,6 @@ export default function MainLayout({
             {pageTitles[activeTab]}
           </h2>
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded text-xs text-zinc-500">
-              <span className="font-mono">⌘K</span>
-              <span>搜索证据...</span>
-            </div>
             <div className="w-6 h-6 rounded bg-gradient-to-tr from-indigo-500 to-purple-500"></div>
           </div>
         </header>

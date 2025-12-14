@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle2, TrendingUp, Sparkles, ChevronLeft, ChevronRight, Calendar, List, Lightbulb, Target, RefreshCw } from 'lucide-react';
-import { GetTodaySummary, GetDailySummary, GetPeriodSummary, ListSummaryIndex, ListPeriodSummaryIndex } from '@/api/app';
+import { GetTodaySummary, GetDailySummary, GetPeriodSummary, ListSummaryIndex, ListPeriodSummaryIndex, GetSessionsByDate } from '@/api/app';
+import { SessionDTO } from '@/types/session';
+import { formatLocalISODate, parseLocalISODate, todayLocalISODate } from '@/lib/date';
 
 // 匹配后端 DailySummaryDTO
 interface DailySummary {
@@ -41,29 +43,87 @@ interface PeriodIndexItem {
   end_date: string;
 }
 
-export default function ReportsView() {
+interface ReportsViewProps {
+  onNavigateToSession?: (sessionId: number, date: string) => void;
+}
+
+function todayISODate(): string {
+  return todayLocalISODate();
+}
+
+function addDaysISO(dateISO: string, days: number): string {
+  const base = parseLocalISODate(dateISO) || new Date();
+  const d = new Date(base.getFullYear(), base.getMonth(), base.getDate(), 0, 0, 0, 0);
+  d.setDate(d.getDate() + days);
+  return formatLocalISODate(d);
+}
+
+function listDatesInclusive(startISO: string, endISO: string): string[] {
+  const out: string[] = [];
+  const start = parseLocalISODate(startISO) || new Date();
+  const end = parseLocalISODate(endISO) || new Date();
+  const cursor = new Date(start);
+  while (cursor <= end) {
+    out.push(formatLocalISODate(cursor));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return out;
+}
+
+function getEvidenceStrengthLabel(s: SessionDTO): { label: string; color: string } {
+  const hasDiff = (s.diff_count || 0) > 0;
+  const hasBrowser = (s.browser_count || 0) > 0;
+  if (hasDiff && hasBrowser) return { label: '证据充足', color: 'text-emerald-400 border-emerald-500/20' };
+  if (hasDiff || hasBrowser) return { label: '证据一般', color: 'text-amber-400 border-amber-500/20' };
+  return { label: '证据不足', color: 'text-rose-400 border-rose-500/20' };
+}
+
+export default function ReportsView({ onNavigateToSession }: ReportsViewProps) {
   const [dailySummary, setDailySummary] = useState<DailySummary | null>(null);
   const [periodSummary, setPeriodSummary] = useState<PeriodSummary | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [viewType, setViewType] = useState<'daily' | 'week' | 'month'>('daily');
-  const [currentDate, setCurrentDate] = useState(new Date().toISOString().slice(0, 10));
+  const [dailyDate, setDailyDate] = useState(todayISODate());
+  const [weekDate, setWeekDate] = useState(todayISODate());
+  const [monthDate, setMonthDate] = useState(todayISODate());
   
   const [showIndex, setShowIndex] = useState(false);
   const [dailyIndex, setDailyIndex] = useState<SummaryIndexItem[]>([]);
   const [periodIndex, setPeriodIndex] = useState<PeriodIndexItem[]>([]);
   const [loadingIndex, setLoadingIndex] = useState(false);
 
+  // 关联会话（证据链最短闭环：Report → Sessions）
+  const [relatedLoading, setRelatedLoading] = useState(false);
+  const [relatedByDate, setRelatedByDate] = useState<Record<string, SessionDTO[]>>({});
+  const [relatedError, setRelatedError] = useState<string | null>(null);
+
   // 计算周/月开始日期
   const getStartDate = (type: 'week' | 'month', date: string): string => {
-    const d = new Date(date);
+    const d = parseLocalISODate(date) || new Date();
     if (type === 'week') {
       const day = d.getDay();
       const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-      return new Date(d.setDate(diff)).toISOString().slice(0, 10);
+      return formatLocalISODate(new Date(d.getFullYear(), d.getMonth(), diff, 0, 0, 0, 0));
     } else {
-      return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
+      return formatLocalISODate(new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0, 0));
     }
+  };
+
+  const activeDate = viewType === 'daily' ? dailyDate : viewType === 'week' ? weekDate : monthDate;
+
+  const getRangeForView = (): { start: string; end: string } => {
+    if (viewType === 'daily') {
+      return { start: dailyDate, end: dailyDate };
+    }
+    const start = getStartDate(viewType, activeDate);
+    if (viewType === 'week') {
+      return { start, end: addDaysISO(start, 6) };
+    }
+    // month
+    const d = parseLocalISODate(start) || new Date();
+    const end = formatLocalISODate(new Date(d.getFullYear(), d.getMonth() + 1, 0, 0, 0, 0, 0));
+    return { start, end };
   };
 
   // 加载日报
@@ -73,8 +133,8 @@ export default function ReportsView() {
       setLoading(true);
       setError(null);
       try {
-        const isToday = currentDate === new Date().toISOString().slice(0, 10);
-        const data = isToday ? await GetTodaySummary() : await GetDailySummary(currentDate);
+        const isToday = dailyDate === todayLocalISODate();
+        const data = isToday ? await GetTodaySummary() : await GetDailySummary(dailyDate);
         setDailySummary(data);
       } catch (e: any) {
         console.error('Failed to load daily summary:', e);
@@ -85,7 +145,7 @@ export default function ReportsView() {
       }
     };
     loadDailySummary();
-  }, [viewType, currentDate]);
+  }, [dailyDate, viewType]);
 
   // 加载周报/月报 - 使用正确的 type 参数: week/month
   const loadPeriodSummary = async (force = false) => {
@@ -93,7 +153,8 @@ export default function ReportsView() {
     setLoading(true);
     setError(null);
     try {
-      const startDate = getStartDate(viewType, currentDate);
+      const base = viewType === 'week' ? weekDate : monthDate;
+      const startDate = getStartDate(viewType, base);
       const data = await GetPeriodSummary(viewType, startDate, force);
       setPeriodSummary(data);
     } catch (e: any) {
@@ -109,7 +170,36 @@ export default function ReportsView() {
     if (viewType !== 'daily') {
       loadPeriodSummary(false);
     }
-  }, [viewType, currentDate]);
+  }, [monthDate, viewType, weekDate]);
+
+  // 关联会话加载：确保 Report 的任何阅读可以 1 次点击 drill-down 到 sessions
+  useEffect(() => {
+    const loadRelated = async () => {
+      setRelatedLoading(true);
+      setRelatedError(null);
+      try {
+        const range = getRangeForView();
+        const dates = listDatesInclusive(range.start, range.end);
+        const results = await Promise.all(
+          dates.map(async (d) => {
+            const sessions = (await GetSessionsByDate(d).catch(() => [])) as SessionDTO[];
+            return { date: d, sessions: Array.isArray(sessions) ? sessions : [] };
+          })
+        );
+        const next: Record<string, SessionDTO[]> = {};
+        for (const r of results) {
+          if (r.sessions.length > 0) next[r.date] = r.sessions;
+        }
+        setRelatedByDate(next);
+      } catch (e: unknown) {
+        setRelatedError(e instanceof Error ? e.message : '加载关联会话失败');
+        setRelatedByDate({});
+      } finally {
+        setRelatedLoading(false);
+      }
+    };
+    loadRelated();
+  }, [dailyDate, monthDate, viewType, weekDate]);
 
   // 强制生成
   const handleForceGenerate = () => {
@@ -117,8 +207,8 @@ export default function ReportsView() {
       // 日报强制生成
       setLoading(true);
       setError(null);
-      const isToday = currentDate === new Date().toISOString().slice(0, 10);
-      (isToday ? GetTodaySummary(true) : GetDailySummary(currentDate, true))
+      const isToday = dailyDate === todayLocalISODate();
+      (isToday ? GetTodaySummary(true) : GetDailySummary(dailyDate, true))
         .then(setDailySummary)
         .catch((e) => setError(e?.message || '生成失败'))
         .finally(() => setLoading(false));
@@ -150,19 +240,21 @@ export default function ReportsView() {
   };
 
   const navigateDate = (direction: number) => {
-    const date = new Date(currentDate);
     if (viewType === 'daily') {
-      date.setDate(date.getDate() + direction);
+      setDailyDate(addDaysISO(dailyDate, direction));
     } else if (viewType === 'week') {
-      date.setDate(date.getDate() + direction * 7);
+      setWeekDate(addDaysISO(weekDate, direction * 7));
     } else {
-      date.setMonth(date.getMonth() + direction);
+      const base = parseLocalISODate(monthDate) || new Date();
+      const next = new Date(base.getFullYear(), base.getMonth() + direction, 1, 0, 0, 0, 0);
+      setMonthDate(formatLocalISODate(next));
     }
-    setCurrentDate(date.toISOString().slice(0, 10));
   };
 
   const selectFromIndex = (date: string) => {
-    setCurrentDate(date);
+    if (viewType === 'daily') setDailyDate(date);
+    if (viewType === 'week') setWeekDate(date);
+    if (viewType === 'month') setMonthDate(date);
     setShowIndex(false);
   };
 
@@ -175,10 +267,10 @@ export default function ReportsView() {
   const period = viewType !== 'daily' ? periodSummary : null;
 
   const getPeriodLabel = () => {
-    if (viewType === 'daily') return currentDate.slice(5);
+    if (viewType === 'daily') return dailyDate.slice(5);
     if (viewType === 'week' && period) return `${period.start_date.slice(5)}~${period.end_date.slice(5)}`;
     if (viewType === 'month' && period) return `${period.start_date.slice(0, 7)}`;
-    return getStartDate(viewType as 'week' | 'month', currentDate).slice(5);
+    return getStartDate(viewType as 'week' | 'month', activeDate).slice(5);
   };
 
   return (
@@ -210,7 +302,7 @@ export default function ReportsView() {
             <span className="text-sm min-w-[80px] text-center flex items-center gap-1">
               <Calendar size={12} /> {getPeriodLabel()}
             </span>
-            <button onClick={() => navigateDate(1)} className="p-1 hover:text-white transition-colors" disabled={currentDate >= new Date().toISOString().slice(0, 10)}>
+            <button onClick={() => navigateDate(1)} className="p-1 hover:text-white transition-colors" disabled={activeDate >= todayLocalISODate()}>
               <ChevronRight size={16} />
             </button>
           </div>
@@ -243,6 +335,75 @@ export default function ReportsView() {
         </Card>
       )}
 
+      {/* Evidence First：Report → Sessions（最短闭环） */}
+      {!loading && (
+        <Card className="bg-zinc-900 border-zinc-800">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm text-zinc-300 flex items-center gap-2">
+              <CheckCircle2 size={14} className="text-emerald-400" /> 来源会话（点开查看证据）
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <div className="text-xs text-zinc-500">
+              报告里的结论来自这些会话。点击会话可查看 Diff / 应用时间线 / 浏览记录等来源证据。
+              <span className="ml-2 text-zinc-600">充足=Diff+浏览，一般=Diff或浏览，不足=仅窗口。</span>
+            </div>
+            {relatedLoading ? (
+              <div className="text-zinc-500 text-sm">加载中...</div>
+            ) : relatedError ? (
+              <div className="text-amber-500 text-sm">{relatedError}</div>
+            ) : Object.keys(relatedByDate).length === 0 ? (
+              <div className="text-zinc-500 text-sm">该时间范围内暂无会话（可去“系统诊断”页构建/重建）</div>
+            ) : (
+              Object.entries(relatedByDate)
+                .sort(([a], [b]) => (a < b ? 1 : -1))
+                .map(([date, sessions]) => (
+                  <details key={date} className="rounded-lg border border-zinc-800 bg-zinc-950/40">
+                    <summary className="cursor-pointer select-none px-3 py-2 text-xs text-zinc-400 font-mono flex items-center justify-between">
+                      <span>{date}</span>
+                      <span className="text-zinc-600">{sessions.length} 会话</span>
+                    </summary>
+                    <div className="p-2 space-y-1 border-t border-zinc-800">
+                      {sessions
+                        .slice()
+                        .sort((a, b) => (a.start_time || 0) - (b.start_time || 0))
+                        .map((s) => {
+                          const strength = getEvidenceStrengthLabel(s);
+                          return (
+                            <button
+                              key={s.id}
+                              onClick={() => onNavigateToSession?.(s.id, s.date)}
+                              className="w-full text-left p-2 rounded-md hover:bg-zinc-900 transition-colors flex items-start justify-between gap-3"
+                            >
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="secondary" className="text-[10px]">
+                                    {s.category || '未分类'}
+                                  </Badge>
+                                  <span className="text-[10px] text-zinc-600 font-mono">{s.time_range}</span>
+                                  <span
+                                    title="证据充足：Diff+浏览；证据一般：Diff或浏览；证据不足：仅窗口"
+                                    className={`text-[10px] px-2 py-0.5 rounded border ${strength.color}`}
+                                  >
+                                    {strength.label}
+                                  </span>
+                                </div>
+                                <div className="text-sm text-zinc-200 mt-1 line-clamp-1">
+                                  {s.summary || s.primary_app || '（无摘要）'}
+                                </div>
+                              </div>
+                              <span className="text-[10px] text-zinc-600 font-mono">#{s.id}</span>
+                            </button>
+                          );
+                        })}
+                    </div>
+                  </details>
+                ))
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* 历史索引面板 */}
       {showIndex && !loading && (
         <Card className="bg-zinc-900 border-zinc-800">
@@ -260,7 +421,7 @@ export default function ReportsView() {
                   <button
                     key={item.date}
                     onClick={() => selectFromIndex(item.date)}
-                    className={`p-2 rounded text-xs transition-colors ${item.has_summary ? 'bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30 border border-indigo-500/30' : 'bg-zinc-950 text-zinc-600 hover:text-zinc-400 border border-zinc-800'} ${item.date === currentDate ? 'ring-1 ring-indigo-500' : ''}`}
+                    className={`p-2 rounded text-xs transition-colors ${item.has_summary ? 'bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30 border border-indigo-500/30' : 'bg-zinc-950 text-zinc-600 hover:text-zinc-400 border border-zinc-800'} ${item.date === dailyDate ? 'ring-1 ring-indigo-500' : ''}`}
                   >
                     <div className="font-mono">{item.date.slice(5)}</div>
                     {item.preview && <div className="text-[10px] text-zinc-500 truncate">{item.preview}</div>}

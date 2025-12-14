@@ -4,6 +4,12 @@
 
 把当前“能跑的个人工具”收敛为可长期交付的产品：对非作者用户也能安装即用、结果可解释、失败可诊断、可持续升级不炸数据。
 
+### 0.1 文档关系与口径（UI）
+
+- PRD 负责“要做什么/验收口径/优先级”，不在这里堆砌全部 UI 细节。
+- Web UI 的交互与视觉规范以 `docs/frontend.md` 为准（工程师驾驶舱：Evidence First + No Silent Failures）。
+- 若 PRD 与 `docs/frontend.md` 对 UI 细节冲突：以 PRD 的产品原则/验收为最终口径；实现细节以 `docs/frontend.md` 落地。
+
 ---
 
 ## 1. 一句话定位（对外）
@@ -31,6 +37,15 @@ Project Mirror：自动把你每天/每周的真实工作学习行为整理成�
     3. 失败可见且可操作：空态/异常/降级必须解释原因并给出下一步
     4. Session 为权威路径：所有上层输出统一口径，避免多套“都能跑但不一致”
     5. 离线可用：无 AI Key 时仍能产出“规则回顾”，且 UI 明确标注能力差异
+
+### 3.1 UI/UX 设计约束（v0.2 必须落地）
+
+来自 `docs/frontend.md` 的强约束（写入 PRD 作为验收口径）：
+
+- 工程师驾驶舱：高信息密度、暗色优先（Tailwind zinc 体系）、语义色统一（Healthy/Warn/Error/AI）。
+- Evidence First：任何 summary/洞察/图表都必须在 1 次交互内 drill-down 到证据（Diff/Events/Browser）。
+- No Silent Failures：全局可见的系统健康（侧边栏常驻 + 状态页），离线/降级必须“一键可解释”（点击健康指示器直达诊断页，展示原因与影响范围）。
+- URL 同步：Session/Skill 的选中态必须能用 URL 表达（刷新可恢复，便于分享/定位）。
 
 ---
 
@@ -112,6 +127,9 @@ Project Mirror：自动把你每天/每周的真实工作学习行为整理成�
 目标：消灭沉默失败，用户能自助定位问题。
 页面/接口必须提供：
 
+- 全局 Shell（UI 验收点）：
+  - 侧边栏底部常驻“系统健康”指示器（Win/Diff/AI 三色点 + 心跳），点击进入状态页（见 `docs/frontend.md` 3.1）。
+  - 不强制全局顶部 Banner；但健康指示器必须在任意页面可见且可点击，一次点击可看到离线/降级原因、影响范围与下一步动作。
 - 采集健康：
   - Window collector：启用状态、最近采集时间、近 24h 写入数、丢弃数（如有）
   - Diff collector：启用状态、watch paths、生效目录数、近 24h diffs 数、非 Git 跳过数
@@ -129,7 +147,7 @@ Project Mirror：自动把你每天/每周的真实工作学习行为整理成�
 验收标准（P0）：
 
 - 任一空白页面都能引导到状态页并定位至少一个可行动原因
-- “离线/降级”必须在 UI 顶部显著展示，并解释影响范围
+- “离线/降级”必须在任意页面可见且可一键解释（原因、影响范围、下一步动作）
 
 ### 8.2 Session（会话）切分与摘要（P0）
 
@@ -145,6 +163,10 @@ Project Mirror：自动把你每天/每周的真实工作学习行为整理成�
   - Session → diffs（可点开 diff detail）
   - Session → window/event 分布
   - Session → browser events（脱敏后展示）
+- UI 交互（v0.2 验收点，来自 `docs/frontend.md` 3.3）：
+  - 会话流卡片点击后，使用右侧 Drawer/Sheet 展示详情（Diff/Timeline/Apps/Browser）。
+  - Diff 详情只读高亮展示；标题/路径等信息不污染全局样式。
+  - Session 详情的打开状态应与 URL 同步（`/sessions/:id`），刷新后仍能定位。
 
 验收标准（P0）：
 
@@ -158,7 +180,7 @@ Project Mirror：自动把你每天/每周的真实工作学习行为整理成�
   - exp 增长来源于 session（权重由：diff 变更量、编码时长、证据强度等简单组合）
   - 衰减：基于 last_active（已有策略可沿用）
 - UI 展示：
-  - 技能树（可折叠）
+  - 技能树（可折叠，文件资源管理器式 Tree Explorer，来自 `docs/frontend.md` 4.2）
   - 选中 skill：最近活跃 sessions 列表 → 点开证据
 
 验收标准（P0）：
@@ -208,22 +230,40 @@ Project Mirror：自动把你每天/每周的真实工作学习行为整理成�
 
 ## 9. 信息架构（Web UI 页面）
 
-- 首页 Dashboard：今日/本周卡片 + 证据覆盖率 + 快捷入口（生成/重建）
-- Sessions：
-  - 列表：按日/周筛选、证据覆盖率标记
-  - 详情：摘要、应用分布、diff 列表、浏览列表、事件时间线
-- Skills：
-  - 树 + 搜索
-  - skill 详情：趋势、贡献 sessions、证据
-- Trends：
-  - 7d vs 30d（技能活跃/投入）+ “缺数据”解释
-- Reports（可选合并到 Dashboard/Trends）：Daily/Weekly/Period 历史索引与查看
-- Settings：
-  - 基础（采集开关/路径）
-  - 隐私
-  - AI
-  - 高级（DB 路径）
-- Status（P0 关键）：健康、队列、错误、诊断动作
+### 9.1 全局 Shell（v0.2）
+
+- 侧边栏：收缩式设计，常驻导航与健康状态（见 `docs/frontend.md` 3.1）。
+- 顶部：保留快捷入口（如搜索/命令面板）但不得以“不可用占位”长期存在；未实现时应隐藏或标记为 P1。
+
+### 9.2 路由设计（URL 同步，v0.2）
+
+（详细交互见 `docs/frontend.md` 6）
+
+- `/dashboard`：概览
+- `/sessions`：会话流
+- `/sessions/:id`：会话详情（Drawer 展示但 URL 必须同步）
+- `/skills`：技能树根
+- `/skills/:skillId`：选中特定节点（Branch/Leaf 统一 ID 空间）
+- `/reports`：日报/周报/月报/阶段回顾 + 历史索引
+- `/status`：系统诊断（P0）
+- `/settings`：设置/引导合一（P0）
+
+### 9.3 页面要点（验收摘要）
+
+- Dashboard：今日/本周卡片 + 证据覆盖率 + 快捷入口；热力图使用真实按日数据（避免假数据）。
+- Sessions：列表（按日/周筛选、证据覆盖率标记）+ 详情（摘要、应用分布、diff、浏览、事件时间线）。
+- Skills：树 + 搜索；详情包含趋势、贡献 sessions、证据。
+- Trends：7d vs 30d（技能活跃/投入）+ “缺数据”解释。（可合并到 Dashboard，但入口与语义必须清晰）
+- Reports：Daily/Weekly/Period 历史索引与查看，且结论必须可追溯到 sessions。
+- Status：健康、队列、错误、诊断动作（按日期执行，带风险提示）。
+- Settings：基础（采集开关/路径）/隐私/AI/高级（DB），并覆盖“首次使用引导”。
+
+### 9.4 UI 技术栈与组件约束（强约束）
+
+来自 `docs/frontend.md` 8.1/8.2：
+
+- React 18 + Vite；Tailwind CSS；Lucide Icons；Recharts 图表。
+- 复杂交互优先复用 shadcn/radix 原语（例如：技能树用 Collapsible/Accordion，会话详情用 Sheet，诊断卡片用 Card+Alert 等）。
 
 ---
 
@@ -243,7 +283,12 @@ SSE（已有）：
 - GET /api/events：
   - data_changed（source, count）
   - settings_updated
-  - 建议补：pipeline_status_changed（让 UI 状态页实时刷新）
+  - pipeline_status_changed（让 UI 状态页实时刷新）
+
+### 10.2 UI 统计口径（新增，v0.2）
+
+- GET /api/trends：
+  - 必须包含 `daily_stats[]`（自然日维度）：用于 Dashboard 热力图与趋势概览，避免前端估算/假数据。
 
 ---
 

@@ -9,6 +9,7 @@ import {
 } from 'recharts';
 import { GetTrends, GetAppStats, GetTodaySummary, GetStatus } from '@/api/app';
 import { EvidenceStatusDTO } from '@/types/status';
+import { todayLocalISODate } from '@/lib/date';
 
 // 后端实际返回的 TrendReportDTO 结构 - 匹配 internal/dto/httpapi.go:61
 interface TrendReportDTO {
@@ -87,7 +88,7 @@ export default function DashboardView({ onNavigate }: DashboardViewProps) {
   })();
 
   // 今日会话数：优先使用 trends.daily_stats；fallback 到 evidence.sessions_24h（口径为最近24h）
-  const todayDate = new Date().toISOString().slice(0, 10);
+  const todayDate = todayLocalISODate();
   const todaySessions = trends?.daily_stats?.find((d) => d.date === todayDate)?.session_count ?? (evidence?.sessions_24h || 0);
 
   // 证据覆盖率：使用后端 evidence 数据
@@ -144,7 +145,7 @@ export default function DashboardView({ onNavigate }: DashboardViewProps) {
         {/* Session Counter */}
         <Card className="bg-zinc-900 border-zinc-800">
           <CardContent className="p-6">
-            <h3 className="text-zinc-400 text-sm font-medium mb-1">今日会话 (24h)</h3>
+            <h3 className="text-zinc-400 text-sm font-medium mb-1">今日会话（自然日）</h3>
             <div className="flex items-baseline gap-2">
               <span className="text-3xl font-bold text-white">{todaySessions}</span>
             </div>
@@ -173,8 +174,11 @@ export default function DashboardView({ onNavigate }: DashboardViewProps) {
               </span>
             </div>
             {weakEvidenceCount > 0 && (
-              <div className="mt-4 text-xs text-amber-500 flex items-center gap-1">
-                <AlertTriangle size={12} /> {weakEvidenceCount} 个弱证据会话
+              <div
+                title="证据不足：缺少 Diff/浏览等证据的会话比例较高，建议配置 Diff 监控路径或启用浏览器采集"
+                className="mt-4 text-xs text-amber-500 flex items-center gap-1"
+              >
+                <AlertTriangle size={12} /> {weakEvidenceCount} 个证据不足会话
               </div>
             )}
             {evidence && (
