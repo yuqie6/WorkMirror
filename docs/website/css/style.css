@@ -8,7 +8,7 @@
 
 /* Mobile-friendly touch targets for buttons */
 @media (max-width: 640px) {
-    button:not(.inline-icon),
+    button,
     [role="button"],
     .touch-target {
         min-height: 44px;
