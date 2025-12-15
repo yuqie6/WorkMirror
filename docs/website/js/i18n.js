@@ -76,6 +76,7 @@ const translations = {
         'docs.legal': 'Legal',
         'docs.privacyPolicy': '隐私策略',
         'docs.terms': '服务条款',
+        'docs.backHome': '返回首页',
         // Footer
         'footer.brand': '复盘镜',
         'footer.copyright': '© 2025 复盘镜（WorkMirror）. Built for Engineers.',
@@ -157,6 +158,7 @@ const translations = {
         'docs.legal': 'Legal',
         'docs.privacyPolicy': 'Privacy Policy',
         'docs.terms': 'Terms of Service',
+        'docs.backHome': 'Back to Home',
         // Footer
         'footer.brand': 'WorkMirror',
         'footer.copyright': '© 2025 WorkMirror. Built for Engineers.',
@@ -201,7 +203,10 @@ function toggleLanguage() {
 
 function updateLangSwitch() {
     const btn = document.getElementById('lang-switch');
-    if (btn) btn.textContent = currentLang === 'zh' ? 'EN' : '中';
+    const btnMobile = document.getElementById('lang-switch-mobile');
+    const text = currentLang === 'zh' ? 'EN' : '中';
+    if (btn) btn.textContent = text;
+    if (btnMobile) btnMobile.textContent = text;
 }
 
 function applyTranslations() {

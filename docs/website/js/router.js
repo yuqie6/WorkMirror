@@ -6,6 +6,91 @@ let currentDocId = 'install';
 // Cache for loaded documents
 const docCache = {};
 
+// Mobile menu toggle with accessibility support
+function toggleMobileMenu() {
+    try {
+        const menu = document.getElementById('mobile-menu');
+        const btn = document.getElementById('mobile-menu-btn');
+        if (menu && btn) {
+            const isHidden = menu.classList.contains('hidden');
+            menu.classList.toggle('hidden');
+            // Update ARIA attribute for accessibility
+            btn.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
+        }
+    } catch (error) {
+        console.error('Error toggling mobile menu:', error);
+    }
+}
+
+// Toggle docs submenu in mobile navigation
+function toggleDocsSubmenu() {
+    try {
+        const submenu = document.getElementById('mobile-docs-submenu');
+        const chevron = document.getElementById('mobile-docs-chevron');
+        if (submenu && chevron) {
+            const isHidden = submenu.classList.contains('hidden');
+            submenu.classList.toggle('hidden');
+            chevron.style.transform = isHidden ? 'rotate(180deg)' : '';
+        }
+    } catch (error) {
+        console.error('Error toggling docs submenu:', error);
+    }
+}
+
+// Toggle doc dropdown in docs view navbar
+function toggleDocDropdown() {
+    try {
+        const menu = document.getElementById('doc-dropdown-menu');
+        const chevron = document.getElementById('doc-dropdown-chevron');
+        if (menu && chevron) {
+            const isHidden = menu.classList.contains('hidden');
+            menu.classList.toggle('hidden');
+            chevron.style.transform = isHidden ? 'rotate(180deg)' : '';
+        }
+    } catch (error) {
+        console.error('Error toggling doc dropdown:', error);
+    }
+}
+
+// Show doc and close the dropdown
+function showDocAndCloseDropdown(docId) {
+    showDoc(docId);
+    const menu = document.getElementById('doc-dropdown-menu');
+    const chevron = document.getElementById('doc-dropdown-chevron');
+    if (menu) menu.classList.add('hidden');
+    if (chevron) chevron.style.transform = '';
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(event) {
+    const dropdown = document.getElementById('doc-dropdown-menu');
+    const btn = document.getElementById('doc-dropdown-btn');
+    if (dropdown && btn && !dropdown.contains(event.target) && !btn.contains(event.target)) {
+        dropdown.classList.add('hidden');
+        const chevron = document.getElementById('doc-dropdown-chevron');
+        if (chevron) chevron.style.transform = '';
+    }
+});
+
+// Wrapper functions for mobile menu navigation
+function handleNavAndCloseMobile(sectionId) {
+    try {
+        handleNavClick(sectionId);
+        toggleMobileMenu();
+    } catch (error) {
+        console.error('Error navigating:', error);
+    }
+}
+
+function switchViewAndCloseMobile(viewName, docId) {
+    try {
+        switchView(viewName, docId);
+        toggleMobileMenu();
+    } catch (error) {
+        console.error('Error switching view:', error);
+    }
+}
+
 // 更新 URL 参数（不刷新页面）
 function updateUrlParams(params) {
     const url = new URL(window.location);
@@ -113,9 +198,35 @@ async function showDoc(docId) {
     const navBtn = document.getElementById(`nav-${docId}`);
     if (navBtn) navBtn.classList.add('nav-active');
 
-    // Update mobile select
-    const mobileSelect = document.getElementById('mobile-doc-select');
-    if (mobileSelect) mobileSelect.value = docId;
+    // Update mobile/tablet nav title
+    updateDocNavTitle(docId, lang);
+}
+
+// Update the doc navigation bar title
+function updateDocNavTitle(docId, lang) {
+    const titleEl = document.getElementById('current-doc-title');
+    if (!titleEl) return;
+
+    // Map docId to i18n key
+    const docTitleMap = {
+        'overview': 'docs.overview',
+        'architecture': 'docs.architecture',
+        'install': 'docs.install',
+        'config': 'docs.config',
+        'api': 'docs.api',
+        'faq': 'docs.faq',
+        'privacy': 'docs.privacyPolicy',
+        'terms': 'docs.terms'
+    };
+
+    const i18nKey = docTitleMap[docId];
+    if (i18nKey) {
+        titleEl.setAttribute('data-i18n', i18nKey);
+        // If i18n is loaded, apply translation
+        if (typeof applyTranslations === 'function') {
+            applyTranslations();
+        }
+    }
 }
 
 // Get current doc ID (for i18n module)

@@ -6,6 +6,30 @@
 ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
 
+/* Mobile-friendly touch targets for buttons */
+@media (max-width: 640px) {
+    button,
+    [role="button"],
+    .touch-target {
+        min-height: 44px;
+    }
+}
+
+/* Heatmap box responsive styles */
+.heatmap-box {
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 0.125rem;
+    background-color: #27272a;
+}
+
+@media (min-width: 640px) {
+    .heatmap-box {
+        width: 1rem;
+        height: 1rem;
+    }
+}
+
 /* Grid Pattern Background */
 .bg-grid-pattern {
     background-image: linear-gradient(to right, #27272a 1px, transparent 1px),
