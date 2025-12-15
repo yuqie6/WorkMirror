@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { StatusDot, StatusType } from '@/components/common/StatusDot';
 import { AlertTriangle, RefreshCw, Download, Play } from 'lucide-react';
-import { GetStatus, RebuildSessionsForDate, EnrichSessionsForDate, BuildSessions } from '@/api/app';
+import { GetStatus, RebuildSessionsForDate, EnrichSessionsForDate, BuildSessions, RepairEvidenceForDate } from '@/api/app';
 import { StatusDTO, extractHealthIndicator } from '@/types/status';
 import { todayLocalISODate } from '@/lib/date';
 import { useTranslation } from '@/lib/i18n';
@@ -39,6 +39,7 @@ export default function StatusView() {
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>(() => todayLocalISODate());
+  const [attachGapMinutes, setAttachGapMinutes] = useState<number>(10);
 
   useEffect(() => {
     const loadStatus = async () => {
@@ -99,6 +100,27 @@ export default function StatusView() {
       setStatus(await GetStatus());
     } catch (e) {
       alert(`${t('status.enrichFailed')}: ${e}`);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleRepairEvidence = async () => {
+    const date = selectedDate;
+    const ok = window.confirm(
+      `${t('status.repairEvidenceWarning')}（${date}）。\n\n${t('status.repairEvidenceImpact')}\n\n${t('status.confirmContinue')}`
+    );
+    if (!ok) return;
+    setActionLoading(true);
+    try {
+      const res = await RepairEvidenceForDate(date, attachGapMinutes);
+      const updatedSessions = (res && typeof res.updated_sessions === 'number') ? res.updated_sessions : 0;
+      const attachedDiffs = (res && typeof res.attached_diffs === 'number') ? res.attached_diffs : 0;
+      const attachedBrowser = (res && typeof res.attached_browser === 'number') ? res.attached_browser : 0;
+      alert(`${t('status.repairEvidenceSuccess')}（${date}）：sessions=${updatedSessions}, diffs=${attachedDiffs}, browser=${attachedBrowser}`);
+      setStatus(await GetStatus());
+    } catch (e) {
+      alert(`${t('status.repairEvidenceFailed')}: ${e}`);
     } finally {
       setActionLoading(false);
     }
@@ -175,6 +197,60 @@ export default function StatusView() {
         </CardContent>
       </Card>
 
+      {/* Evidence Coverage */}
+      <Card className="bg-zinc-900 border-zinc-800">
+        <CardHeader>
+          <CardTitle className="text-zinc-200 font-medium">
+            {t('status.evidenceCoverage')}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          <div className="flex items-center justify-between bg-zinc-950/50 border border-zinc-800 px-3 py-2 rounded">
+            <div className="text-zinc-400">{t('status.sessions24h')}</div>
+            <div className="font-mono text-zinc-200">{status.evidence.sessions_24h}</div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="bg-zinc-950/50 border border-zinc-800 px-3 py-2 rounded flex items-center justify-between">
+              <div className="text-zinc-400">{t('status.withDiff')}</div>
+              <div className="font-mono text-zinc-200">{status.evidence.with_diff}</div>
+            </div>
+            <div className="bg-zinc-950/50 border border-zinc-800 px-3 py-2 rounded flex items-center justify-between">
+              <div className="text-zinc-400">{t('status.withBrowser')}</div>
+              <div className="font-mono text-zinc-200">{status.evidence.with_browser}</div>
+            </div>
+            <div className="bg-zinc-950/50 border border-zinc-800 px-3 py-2 rounded flex items-center justify-between">
+              <div className="text-zinc-400">{t('status.withDiffBrowser')}</div>
+              <div className="font-mono text-zinc-200">{status.evidence.with_diff_and_browser}</div>
+            </div>
+            <div className="bg-zinc-950/50 border border-zinc-800 px-3 py-2 rounded flex items-center justify-between">
+              <div className="text-zinc-400">{t('status.weakEvidence')}</div>
+              <div className="font-mono text-zinc-200">{status.evidence.weak_evidence}</div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div className="bg-zinc-950/50 border border-zinc-800 px-3 py-2 rounded flex items-center justify-between">
+              <div className="text-zinc-400">{t('status.orphanDiffs24h')}</div>
+              <div className="font-mono text-zinc-200">{status.evidence.orphan_diffs_24h || 0}</div>
+            </div>
+            <div className="bg-zinc-950/50 border border-zinc-800 px-3 py-2 rounded flex items-center justify-between">
+              <div className="text-zinc-400">{t('status.orphanBrowser24h')}</div>
+              <div className="font-mono text-zinc-200">{status.evidence.orphan_browser_24h || 0}</div>
+            </div>
+          </div>
+
+          {(status.evidence.orphan_diffs_24h || status.evidence.orphan_browser_24h) ? (
+            <Alert className="bg-amber-500/10 border-amber-500/20 text-amber-500">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>{t('status.orphanEvidenceTitle')}</AlertTitle>
+              <AlertDescription className="text-amber-500/80">
+                {t('status.orphanEvidenceHint')}
+              </AlertDescription>
+            </Alert>
+          ) : null}
+        </CardContent>
+      </Card>
+
       {/* Maintenance */}
       <Card className="bg-zinc-900 border-zinc-800">
         <CardHeader>
@@ -194,6 +270,23 @@ export default function StatusView() {
               onChange={(e) => setSelectedDate(e.target.value)}
               className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-300 font-mono"
               max={todayLocalISODate()}
+            />
+          </div>
+          <div className="flex items-center justify-between bg-zinc-950/50 border border-zinc-800 rounded-lg p-3">
+            <div>
+              <div className="text-sm text-zinc-300 font-medium">{t('status.attachGapMinutes')}</div>
+              <div className="text-xs text-zinc-500">{t('status.attachGapMinutesHint')}</div>
+            </div>
+            <input
+              type="number"
+              min={1}
+              max={180}
+              value={Number.isFinite(attachGapMinutes) ? attachGapMinutes : 10}
+              onChange={(e) => {
+                const n = Math.floor(Number(e.target.value));
+                setAttachGapMinutes(Number.isFinite(n) ? Math.max(1, Math.min(180, n)) : 10);
+              }}
+              className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-300 font-mono w-24 text-right"
             />
           </div>
           <button
@@ -230,6 +323,18 @@ export default function StatusView() {
               <div className="text-xs text-zinc-500">{t('status.enrichMissingHint')}</div>
             </div>
             <RefreshCw size={16} className="text-zinc-600 group-hover:text-indigo-400" />
+          </button>
+
+          <button
+            onClick={handleRepairEvidence}
+            disabled={actionLoading}
+            className="w-full flex items-center justify-between p-3 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 rounded-lg transition-colors text-left group disabled:opacity-50"
+          >
+            <div>
+              <div className="text-sm text-amber-300 font-medium">{t('status.repairEvidence')}</div>
+              <div className="text-xs text-zinc-500">{t('status.repairEvidenceHint')}</div>
+            </div>
+            <RefreshCw size={16} className="text-amber-600 group-hover:text-amber-400" />
           </button>
 
           <a

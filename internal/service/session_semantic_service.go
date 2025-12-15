@@ -181,6 +181,13 @@ func shouldEnrichSession(sess *schema.Session) bool {
 	if len(schema.GetStringSlice(sess.Metadata, sessionMetaSkillKeys)) == 0 && len(sess.SkillsInvolved) == 0 {
 		return true
 	}
+	// v0.3：对外契约字段缺失也需要补齐（避免前端启发式猜测）
+	if strings.TrimSpace(getSessionMetaString(sess.Metadata, sessionMetaSemanticSource)) == "" {
+		return true
+	}
+	if strings.TrimSpace(getSessionMetaString(sess.Metadata, sessionMetaEvidenceHint)) == "" {
+		return true
+	}
 	return false
 }
 
@@ -357,6 +364,10 @@ func (s *SessionSemanticService) enrichOne(ctx context.Context, sess *schema.Ses
 		skillsInvolved = append([]string(nil), skillNames...)
 	}
 
+	semanticSource := strings.TrimSpace(getSessionMetaString(meta, sessionMetaSemanticSource))
+	degradedReason := strings.TrimSpace(getSessionMetaString(meta, sessionMetaDegradedReason))
+
+	usedAI := false
 	if s.analyzer != nil && strings.TrimSpace(summary) == "" {
 		req := &ai.SessionSummaryRequest{
 			SessionID:    sess.ID,
@@ -389,6 +400,11 @@ func (s *SessionSemanticService) enrichOne(ctx context.Context, sess *schema.Ses
 			if len(res.Tags) > 0 {
 				meta[sessionMetaTags] = uniqueNonEmpty(res.Tags, 6)
 			}
+			if strings.TrimSpace(summary) != "" {
+				usedAI = true
+			}
+		} else if err != nil {
+			degradedReason = "provider_error"
 		}
 	}
 
@@ -398,6 +414,27 @@ func (s *SessionSemanticService) enrichOne(ctx context.Context, sess *schema.Ses
 	if category == "" {
 		category = fallbackSessionCategory(diffs, browserEvents)
 	}
+
+	diffCount := len(getSessionDiffIDs(meta))
+	browserCount := len(getSessionBrowserEventIDs(meta))
+	setSessionMetaString(meta, sessionMetaEvidenceHint, EvidenceHintFromCounts(diffCount, browserCount))
+	setSessionMetaString(meta, sessionMetaSemanticVersion, "v1")
+
+	if semanticSource == "" {
+		if usedAI {
+			semanticSource = "ai"
+		} else {
+			semanticSource = "rule"
+		}
+	}
+	if semanticSource == "rule" && degradedReason == "" {
+		if s.analyzer == nil {
+			degradedReason = "not_configured"
+		}
+	}
+
+	setSessionMetaString(meta, sessionMetaSemanticSource, semanticSource)
+	setSessionMetaString(meta, sessionMetaDegradedReason, degradedReason)
 
 	update := schema.SessionSemanticUpdate{
 		TimeRange:      sess.TimeRange,

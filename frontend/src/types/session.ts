@@ -7,11 +7,17 @@ export interface SessionDTO {
   end_time: number;
   time_range: string;
   primary_app: string;
+  session_version: number;
   category: string;
   summary: string;
   skills_involved: string[];
   diff_count: number;
   browser_count: number;
+
+  semantic_source: 'ai' | 'rule' | string;
+  semantic_version?: string;
+  evidence_hint: string;
+  degraded_reason?: string;
 }
 
 export interface SessionAppUsageDTO {
@@ -68,9 +74,7 @@ export interface ISession {
 
 // 从后端 DTO 转换为前端 ISession
 export function toISession(dto: SessionDTO): ISession {
-  // 类型判断：有 skills_involved 且有 category 通常是 AI 推断
-  // 注意：这只是启发式判断，后端应该明确提供 source_type 字段
-  const hasSemanticData = dto.skills_involved && dto.skills_involved.length > 0 && dto.category;
+  const semanticSource = (dto.semantic_source || 'rule') as 'ai' | 'rule' | string;
 
   // 证据强度：基于 diff 和 browser 同时存在
   let evidenceStrength: 'strong' | 'medium' | 'weak' = 'weak';
@@ -86,7 +90,7 @@ export function toISession(dto: SessionDTO): ISession {
     title: dto.category || dto.primary_app || '未分类会话',
     summary: dto.summary || `${dto.primary_app} 相关活动`,
     duration: dto.time_range,
-    type: hasSemanticData ? 'ai' : 'rule',
+    type: semanticSource === 'ai' ? 'ai' : 'rule',
     tags: dto.skills_involved || [],
     evidenceStrength,
   };

@@ -134,6 +134,7 @@ func registerRoutes(mux *http.ServeMux, api *handler.API) {
 	// v0.2 product API aliases
 	mux.HandleFunc("/api/maintenance/sessions/rebuild", requireMethod(http.MethodPost, api.HandleMaintenanceSessionsRebuild))
 	mux.HandleFunc("/api/maintenance/sessions/enrich", requireMethod(http.MethodPost, api.HandleMaintenanceSessionsEnrich))
+	mux.HandleFunc("/api/maintenance/sessions/repair-evidence", requireMethod(http.MethodPost, api.HandleMaintenanceSessionsRepairEvidence))
 
 	mux.HandleFunc("/api/diagnostics/export", requireMethod(http.MethodGet, api.HandleDiagnosticsExport))
 

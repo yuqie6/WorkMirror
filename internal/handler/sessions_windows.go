@@ -115,6 +115,45 @@ func (a *API) HandleEnrichSessionsForDate(w http.ResponseWriter, r *http.Request
 	WriteJSON(w, http.StatusOK, &dto.SessionEnrichResultDTO{Enriched: enriched})
 }
 
+func (a *API) HandleRepairEvidenceForDate(w http.ResponseWriter, r *http.Request) {
+	if !a.requireWritableDB(w) {
+		return
+	}
+	var req dto.RepairEvidenceRequestDTO
+	if err := readJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	date := strings.TrimSpace(req.Date)
+	if date == "" {
+		WriteError(w, http.StatusBadRequest, "date 不能为空")
+		return
+	}
+	if a.rt == nil || a.rt.Core == nil || a.rt.Core.Services.Sessions == nil {
+		WriteError(w, http.StatusBadRequest, "会话服务未初始化")
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
+	defer cancel()
+
+	res, err := a.rt.Core.Services.Sessions.RepairEvidenceForDate(ctx, date, req.AttachGapMinutes, req.Limit)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if a.hub != nil {
+		a.hub.Publish(eventbus.Event{Type: "pipeline_status_changed"})
+	}
+	WriteJSON(w, http.StatusOK, &dto.RepairEvidenceResultDTO{
+		OrphanDiffs:      res.OrphanDiffs,
+		OrphanBrowser:    res.OrphanBrowser,
+		AttachedDiffs:    res.AttachedDiffs,
+		AttachedBrowser:  res.AttachedBrowser,
+		UpdatedSessions:  res.UpdatedSessions,
+		AttachGapMinutes: res.AttachGapMinutes,
+	})
+}
+
 func (a *API) HandleSessionsByDate(w http.ResponseWriter, r *http.Request) {
 	date := strings.TrimSpace(r.URL.Query().Get("date"))
 	if date == "" {
@@ -132,24 +171,40 @@ func (a *API) HandleSessionsByDate(w http.ResponseWriter, r *http.Request) {
 	}
 	result := make([]dto.SessionDTO, 0, len(sessions))
 	for _, s := range sessions {
-		diffIDs := schema.GetInt64Slice(s.Metadata, "diff_ids")
-		browserIDs := schema.GetInt64Slice(s.Metadata, "browser_event_ids")
+		meta := s.Metadata
+		diffIDs := schema.GetInt64Slice(meta, "diff_ids")
+		browserIDs := schema.GetInt64Slice(meta, "browser_event_ids")
 		timeRange := strings.TrimSpace(s.TimeRange)
 		if timeRange == "" {
 			timeRange = service.FormatTimeRangeMs(s.StartTime, s.EndTime)
 		}
+		semanticSource, _ := meta["semantic_source"].(string)
+		if strings.TrimSpace(semanticSource) == "" {
+			semanticSource = "rule"
+		}
+		semanticVersion, _ := meta["semantic_version"].(string)
+		evidenceHint, _ := meta["evidence_hint"].(string)
+		if strings.TrimSpace(evidenceHint) == "" {
+			evidenceHint = service.EvidenceHintFromCounts(len(diffIDs), len(browserIDs))
+		}
+		degradedReason, _ := meta["degraded_reason"].(string)
 		result = append(result, dto.SessionDTO{
-			ID:             s.ID,
-			Date:           s.Date,
-			StartTime:      s.StartTime,
-			EndTime:        s.EndTime,
-			TimeRange:      timeRange,
-			PrimaryApp:     s.PrimaryApp,
-			Category:       s.Category,
-			Summary:        s.Summary,
-			SkillsInvolved: []string(s.SkillsInvolved),
-			DiffCount:      len(diffIDs),
-			BrowserCount:   len(browserIDs),
+			ID:              s.ID,
+			Date:            s.Date,
+			StartTime:       s.StartTime,
+			EndTime:         s.EndTime,
+			TimeRange:       timeRange,
+			PrimaryApp:      s.PrimaryApp,
+			SessionVersion:  s.SessionVersion,
+			Category:        s.Category,
+			Summary:         s.Summary,
+			SkillsInvolved:  []string(s.SkillsInvolved),
+			DiffCount:       len(diffIDs),
+			BrowserCount:    len(browserIDs),
+			SemanticSource:  semanticSource,
+			SemanticVersion: semanticVersion,
+			EvidenceHint:    evidenceHint,
+			DegradedReason:  degradedReason,
 		})
 	}
 	sort.Slice(result, func(i, j int) bool { return result[i].StartTime < result[j].StartTime })
@@ -242,19 +297,36 @@ func (a *API) HandleSessionDetail(w http.ResponseWriter, r *http.Request) {
 		timeRange = service.FormatTimeRangeMs(sess.StartTime, sess.EndTime)
 	}
 
+	meta := sess.Metadata
+	semanticSource, _ := meta["semantic_source"].(string)
+	if strings.TrimSpace(semanticSource) == "" {
+		semanticSource = "rule"
+	}
+	semanticVersion, _ := meta["semantic_version"].(string)
+	evidenceHint, _ := meta["evidence_hint"].(string)
+	if strings.TrimSpace(evidenceHint) == "" {
+		evidenceHint = service.EvidenceHintFromCounts(len(diffIDs), len(browserIDs))
+	}
+	degradedReason, _ := meta["degraded_reason"].(string)
+
 	resp := &dto.SessionDetailDTO{
 		SessionDTO: dto.SessionDTO{
-			ID:             sess.ID,
-			Date:           sess.Date,
-			StartTime:      sess.StartTime,
-			EndTime:        sess.EndTime,
-			TimeRange:      timeRange,
-			PrimaryApp:     sess.PrimaryApp,
-			Category:       sess.Category,
-			Summary:        sess.Summary,
-			SkillsInvolved: []string(sess.SkillsInvolved),
-			DiffCount:      len(diffIDs),
-			BrowserCount:   len(browserIDs),
+			ID:              sess.ID,
+			Date:            sess.Date,
+			StartTime:       sess.StartTime,
+			EndTime:         sess.EndTime,
+			TimeRange:       timeRange,
+			PrimaryApp:      sess.PrimaryApp,
+			SessionVersion:  sess.SessionVersion,
+			Category:        sess.Category,
+			Summary:         sess.Summary,
+			SkillsInvolved:  []string(sess.SkillsInvolved),
+			DiffCount:       len(diffIDs),
+			BrowserCount:    len(browserIDs),
+			SemanticSource:  semanticSource,
+			SemanticVersion: semanticVersion,
+			EvidenceHint:    evidenceHint,
+			DegradedReason:  degradedReason,
 		},
 		Tags:     schema.GetStringSlice(sess.Metadata, "tags"),
 		RAGRefs:  schema.GetMapSlice(sess.Metadata, "rag_refs"),

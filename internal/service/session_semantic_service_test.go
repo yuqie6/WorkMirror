@@ -180,6 +180,10 @@ func TestShouldEnrichSession_HasSummaryAndSkills(t *testing.T) {
 		ID:             1,
 		Summary:        "Already has summary",
 		SkillsInvolved: []string{"Go"}, // has skills too
+		Metadata: schema.JSONMap{
+			"semantic_source": "ai",
+			"evidence_hint":   "diff",
+		},
 	}
 	if shouldEnrichSession(sess) {
 		t.Fatal("session with summary AND skills should NOT need enrichment")
@@ -201,8 +205,8 @@ func TestEnrichSessionsForDate_EnrichesNeedingSessions(t *testing.T) {
 	baseTs := now.Truncate(time.Hour).UnixMilli()
 
 	sessions := []schema.Session{
-		{ID: 1, StartTime: baseTs, EndTime: baseTs + 1000, Summary: ""},                                             // needs enrichment
-		{ID: 2, StartTime: baseTs, EndTime: baseTs + 2000, Summary: "Already done", SkillsInvolved: []string{"Go"}}, // skip - has both
+		{ID: 1, StartTime: baseTs, EndTime: baseTs + 1000, Summary: ""}, // needs enrichment
+		{ID: 2, StartTime: baseTs, EndTime: baseTs + 2000, Summary: "Already done", SkillsInvolved: []string{"Go"}, Metadata: schema.JSONMap{"semantic_source": "ai", "evidence_hint": "diff"}}, // skip - has both
 	}
 
 	diffs := []schema.Diff{

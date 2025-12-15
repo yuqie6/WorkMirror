@@ -167,6 +167,8 @@ func BuildStatus(ctx context.Context, rt *bootstrap.AgentRuntime, startedAt time
 	}
 	if rt.Repos.Session != nil {
 		if sessions, err := rt.Repos.Session.GetByTimeRange(ctx, start24h, end24h); err == nil {
+			refDiffIDs := make(map[int64]struct{}, 256)
+			refBrowserIDs := make(map[int64]struct{}, 256)
 			for _, s := range sessions {
 				diffIDs := schema.GetInt64Slice(s.Metadata, "diff_ids")
 				browserIDs := schema.GetInt64Slice(s.Metadata, "browser_event_ids")
@@ -183,6 +185,41 @@ func BuildStatus(ctx context.Context, rt *bootstrap.AgentRuntime, startedAt time
 				}
 				if !hasDiff && !hasBrowser {
 					evidence.WeakEvidence++
+				}
+				for _, id := range diffIDs {
+					if id > 0 {
+						refDiffIDs[id] = struct{}{}
+					}
+				}
+				for _, id := range browserIDs {
+					if id > 0 {
+						refBrowserIDs[id] = struct{}{}
+					}
+				}
+			}
+
+			if rt.Repos.Diff != nil {
+				if diffs, err := rt.Repos.Diff.GetByTimeRange(ctx, start24h, end24h); err == nil {
+					for _, d := range diffs {
+						if d.ID <= 0 {
+							continue
+						}
+						if _, ok := refDiffIDs[d.ID]; !ok {
+							evidence.OrphanDiffs24h++
+						}
+					}
+				}
+			}
+			if rt.Repos.Browser != nil {
+				if evs, err := rt.Repos.Browser.GetByTimeRange(ctx, start24h, end24h); err == nil {
+					for _, e := range evs {
+						if e.ID <= 0 {
+							continue
+						}
+						if _, ok := refBrowserIDs[e.ID]; !ok {
+							evidence.OrphanBrowser24h++
+						}
+					}
 				}
 			}
 		}

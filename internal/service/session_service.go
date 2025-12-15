@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/yuqie6/WorkMirror/internal/repository"
 	"github.com/yuqie6/WorkMirror/internal/schema"
 )
 
@@ -186,6 +187,18 @@ func (s *SessionService) buildSessionsForRange(
 
 	// 绑定浏览器事件（不参与切分）
 	s.attachBrowserEvents(sessions, browserEvents)
+	for _, sess := range sessions {
+		if sess == nil {
+			continue
+		}
+		if sess.Metadata == nil {
+			sess.Metadata = make(schema.JSONMap)
+		}
+		diffCount := len(getSessionDiffIDs(sess.Metadata))
+		browserCount := len(getSessionBrowserEventIDs(sess.Metadata))
+		setSessionMetaString(sess.Metadata, sessionMetaEvidenceHint, EvidenceHintFromCounts(diffCount, browserCount))
+		setSessionMetaString(sess.Metadata, sessionMetaSemanticVersion, "v1")
+	}
 
 	if err := s.assignSessionVersions(ctx, sessions, versionStrategy); err != nil {
 		return 0, err
@@ -223,6 +236,15 @@ type SessionServiceStats struct {
 	LastError   string `json:"last_error"`
 }
 
+type EvidenceRepairResult struct {
+	OrphanDiffs      int `json:"orphan_diffs"`
+	OrphanBrowser    int `json:"orphan_browser"`
+	AttachedDiffs    int `json:"attached_diffs"`
+	AttachedBrowser  int `json:"attached_browser"`
+	UpdatedSessions  int `json:"updated_sessions"`
+	AttachGapMinutes int `json:"attach_gap_minutes"`
+}
+
 func (s *SessionService) Stats() SessionServiceStats {
 	if s == nil {
 		return SessionServiceStats{}
@@ -244,6 +266,184 @@ func (s *SessionService) noteError(err error) {
 	s.splitErrors.Add(1)
 	s.lastErrorAt.Store(time.Now().UnixMilli())
 	s.lastErrorMsg.Store(err.Error())
+}
+
+// RepairEvidenceForDate 尝试把“未归并证据”挂回到最邻近的 Session（不创建新 session、不删除旧数据）。
+// v0.3 P0：先解决“Evidence First 断链”与 orphan 指标长期不收敛问题。
+func (s *SessionService) RepairEvidenceForDate(ctx context.Context, date string, attachGapMinutes, limit int) (EvidenceRepairResult, error) {
+	if s == nil || s.sessionRepo == nil {
+		return EvidenceRepairResult{}, nil
+	}
+	if attachGapMinutes <= 0 {
+		attachGapMinutes = 10
+	}
+	if limit <= 0 {
+		limit = 500
+	}
+
+	start, end, err := repository.DayRange(date)
+	if err != nil {
+		return EvidenceRepairResult{}, err
+	}
+
+	sessions, err := s.sessionRepo.GetByTimeRange(ctx, start, end)
+	if err != nil {
+		return EvidenceRepairResult{}, err
+	}
+	if len(sessions) == 0 {
+		return EvidenceRepairResult{AttachGapMinutes: attachGapMinutes}, nil
+	}
+
+	type sessRef struct {
+		id    int64
+		start int64
+		end   int64
+		meta  schema.JSONMap
+	}
+	refs := make([]sessRef, 0, len(sessions))
+	refDiffIDs := make(map[int64]struct{}, 512)
+	refBrowserIDs := make(map[int64]struct{}, 512)
+	for _, sess := range sessions {
+		meta := sess.Metadata
+		refs = append(refs, sessRef{id: sess.ID, start: sess.StartTime, end: sess.EndTime, meta: meta})
+		for _, id := range getSessionDiffIDs(meta) {
+			if id > 0 {
+				refDiffIDs[id] = struct{}{}
+			}
+		}
+		for _, id := range getSessionBrowserEventIDs(meta) {
+			if id > 0 {
+				refBrowserIDs[id] = struct{}{}
+			}
+		}
+	}
+
+	findBestSession := func(ts int64) (sessRef, int64, bool) {
+		var best sessRef
+		bestGap := int64(0)
+		found := false
+		for _, r := range refs {
+			if r.id == 0 {
+				continue
+			}
+			gap := int64(0)
+			switch {
+			case ts < r.start:
+				gap = r.start - ts
+			case ts > r.end:
+				gap = ts - r.end
+			default:
+				gap = 0
+			}
+			if !found || gap < bestGap {
+				best = r
+				bestGap = gap
+				found = true
+				if bestGap == 0 {
+					break
+				}
+			}
+		}
+		return best, bestGap, found
+	}
+
+	gapMs := int64(attachGapMinutes) * 60 * 1000
+	updatedMeta := make(map[int64]schema.JSONMap, 16)
+	addedDiffIDs := make(map[int64][]int64, 16)
+
+	result := EvidenceRepairResult{AttachGapMinutes: attachGapMinutes}
+
+	if s.diffRepo != nil {
+		diffs, err := s.diffRepo.GetByTimeRange(ctx, start, end)
+		if err != nil {
+			return EvidenceRepairResult{}, err
+		}
+		for _, d := range diffs {
+			if d.ID <= 0 {
+				continue
+			}
+			if _, ok := refDiffIDs[d.ID]; ok {
+				continue
+			}
+			result.OrphanDiffs++
+			if limit > 0 && result.AttachedDiffs >= limit {
+				continue
+			}
+			best, gap, ok := findBestSession(d.Timestamp)
+			if !ok || gap > gapMs {
+				continue
+			}
+			meta := updatedMeta[best.id]
+			if meta == nil {
+				meta = best.meta
+				if meta == nil {
+					meta = make(schema.JSONMap)
+				}
+			}
+			ids := append(getSessionDiffIDs(meta), d.ID)
+			setSessionDiffIDs(meta, ids)
+			setSessionMetaString(meta, sessionMetaEvidenceHint, EvidenceHintFromCounts(len(getSessionDiffIDs(meta)), len(getSessionBrowserEventIDs(meta))))
+			setSessionMetaString(meta, sessionMetaSemanticVersion, "v1")
+			updatedMeta[best.id] = meta
+			addedDiffIDs[best.id] = append(addedDiffIDs[best.id], d.ID)
+			refDiffIDs[d.ID] = struct{}{}
+			result.AttachedDiffs++
+		}
+	}
+
+	if s.browserRepo != nil {
+		events, err := s.browserRepo.GetByTimeRange(ctx, start, end)
+		if err != nil {
+			return EvidenceRepairResult{}, err
+		}
+		for _, e := range events {
+			if e.ID <= 0 {
+				continue
+			}
+			if _, ok := refBrowserIDs[e.ID]; ok {
+				continue
+			}
+			result.OrphanBrowser++
+			if limit > 0 && (result.AttachedDiffs+result.AttachedBrowser) >= limit {
+				continue
+			}
+			best, gap, ok := findBestSession(e.Timestamp)
+			if !ok || gap > gapMs {
+				continue
+			}
+			meta := updatedMeta[best.id]
+			if meta == nil {
+				meta = best.meta
+				if meta == nil {
+					meta = make(schema.JSONMap)
+				}
+			}
+			ids := append(getSessionBrowserEventIDs(meta), e.ID)
+			setSessionBrowserEventIDs(meta, ids)
+			setSessionMetaString(meta, sessionMetaEvidenceHint, EvidenceHintFromCounts(len(getSessionDiffIDs(meta)), len(getSessionBrowserEventIDs(meta))))
+			setSessionMetaString(meta, sessionMetaSemanticVersion, "v1")
+			updatedMeta[best.id] = meta
+			refBrowserIDs[e.ID] = struct{}{}
+			result.AttachedBrowser++
+		}
+	}
+
+	for sessionID, meta := range updatedMeta {
+		if sessionID == 0 || meta == nil {
+			continue
+		}
+		if err := s.sessionRepo.UpdateSemantic(ctx, sessionID, schema.SessionSemanticUpdate{Metadata: meta}); err != nil {
+			return EvidenceRepairResult{}, err
+		}
+		if s.sessionDiffRepo != nil {
+			if ids := addedDiffIDs[sessionID]; len(ids) > 0 {
+				_ = s.sessionDiffRepo.BatchInsert(ctx, sessionID, ids)
+			}
+		}
+		result.UpdatedSessions++
+	}
+
+	return result, nil
 }
 
 // assignSessionVersions 为会话分配切分版本号

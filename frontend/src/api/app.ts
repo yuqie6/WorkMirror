@@ -139,6 +139,16 @@ export async function EnrichSessionsForDate(date: string): Promise<any> {
     });
 }
 
+export async function RepairEvidenceForDate(date: string, attachGapMinutes?: number): Promise<any> {
+    const gap = Number.isFinite(attachGapMinutes) && (attachGapMinutes as number) > 0
+        ? Math.floor(attachGapMinutes as number)
+        : undefined;
+    return requestJSON("/api/maintenance/sessions/repair-evidence", {
+        method: "POST",
+        body: JSON.stringify({ date, attach_gap_minutes: gap } as any),
+    });
+}
+
 export async function GetSettings(): Promise<any> {
     return requestJSON("/api/settings");
 }

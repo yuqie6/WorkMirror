@@ -1,4 +1,7 @@
-• # 复盘镜 WorkMirror PRD v0.2（产品化闭环版：Windows 托盘 Agent + 本地 Web UI；无 Wails/无 CLI）
+# 复盘镜 WorkMirror PRD v0.2.0-alpha.1（产品化闭环版：Windows 托盘 Agent + 本地 Web UI；无 Wails/无 CLI）
+
+最后更新：2025-12-15  
+对应版本：`v0.2.0-alpha.1`（见 `CHANGELOG.md`）
 
 ## 0. 文档目的
 
@@ -9,6 +12,15 @@
 - PRD 负责“要做什么/验收口径/优先级”，不在这里堆砌全部 UI 细节。
 - Web UI 的交互与视觉规范以 `docs/frontend.md` 为准（工程师驾驶舱：Evidence First + No Silent Failures）。
 - 若 PRD 与 `docs/frontend.md` 对 UI 细节冲突：以 PRD 的产品原则/验收为最终口径；实现细节以 `docs/frontend.md` 落地。
+
+### 0.2 现状对照（alpha.1）
+
+本 PRD v0.2 的大部分 P0 已在 `v0.2.0-alpha.1` 落地，但仍有两处“口径/逻辑不稳”的关键缺口（会影响 Evidence First 与离线一致性）：
+
+1) **会话切分对无窗口证据的处理不够稳健**：当前切分以 window events 为锚点，不产生“纯 diff 会话”（见 `internal/service/session_service.go`），会导致“窗口采集缺失/晚到”场景下 diff 证据丢失或无法追溯。  
+2) **会话语义来源未写入稳定对外契约**：前端目前以启发式推断 `ai/rule`（见 `frontend/src/types/session.ts`），易误标，违反“离线可见且可解释”的验收口径。
+
+> 下一版 PRD（v0.3）将把“会话证据归并策略 + 语义来源字段”列为第一优先级（见 `docs/PRD_v0.3.md`）。
 
 ---
 
@@ -81,6 +93,14 @@
 - Session：聚合证据的最小可回放单元（权威）
 - Skill：从 Session 归因得出的能力结构
 - Summary（Daily/Weekly/Period）：从 Session 聚合生成的回顾输出（不直接从 raw 统计）
+
+### 6.3 会话语义来源（v0.2 P0，补齐“口径”）
+
+为避免 UI/统计口径“猜测”，Session 必须携带明确的语义来源字段（建议写入 `session.metadata`，也可升级为列字段）：
+
+- `semantic_source`：`ai` | `rule`（会话摘要/分类/标签的生成来源）
+- `semantic_version`：语义生成策略版本（用于回放与可重复性）
+- `evidence_hint`：`diff+browser` | `diff` | `browser` | `window_only` | `diff_only`（用于弱证据标注与状态页统计）
 
 ### 6.2 权威路径（必须遵守）
 
@@ -164,7 +184,7 @@
   - Session → window/event 分布
   - Session → browser events（脱敏后展示）
 - UI 交互（v0.2 验收点，来自 `docs/frontend.md` 3.3）：
-  - 会话流卡片点击后，使用右侧 Drawer/Sheet 展示详情（Diff/Timeline/Apps/Browser）。
+  - 会话流卡片点击后，必须在 1 次交互内展开详情（Diff/Timeline/Apps/Browser）；实现允许 Drawer/Sheet 或 Split View（二栏），但必须满足 Evidence First 与 URL 同步。
   - Diff 详情只读高亮展示；标题/路径等信息不污染全局样式。
   - Session 详情的打开状态应与 URL 同步（`/sessions/:id`），刷新后仍能定位。
 
@@ -271,6 +291,13 @@
 
 原则：所有 API 错误返回统一结构 { "error": "..." }，并附带可选 code/hint（建议 v0.2 加上）。
 
+### 10.0 契约稳定性（v0.2 P0，补齐）
+
+为减少前端“启发式猜测”，以下字段应视为稳定契约：
+
+- Session 列表/详情：必须包含 `session_version`（已存在）以及 `semantic_source`/`evidence_hint`（待补齐，见 6.3）。
+- Summary/Report：必须明确标注生成模式 `mode=ai|offline_rule`，并在 UI 中显式呈现（避免“看起来像 AI 但其实是规则”）。
+
 ### 10.1 必备新增/强化接口（建议）
 
 - GET /api/status：汇总健康状态（采集/管道/AI/最近错误/覆盖率）
@@ -342,6 +369,6 @@ SSE（已有）：
 
 ## 15. 版本规划
 
-- v0.2（产品化闭环）：状态页/诊断动作、Session 权威、规则降级一致、引导完善、周报可追溯
-- v0.3（价值增强）：瓶颈分析、覆盖率提升（browser/diff）、导出报告、通知
+- v0.2（产品化闭环）：状态页/诊断动作、Session 权威、规则降级一致、引导完善、周报可追溯（已落地到 `v0.2.0-alpha.1`）
+- v0.3（价值增强）：会话证据归并策略（修复无窗口证据）、语义来源字段、覆盖率提升（browser/diff）、导出报告、通知（见 `docs/PRD_v0.3.md`）
 - v0.4（长期演进）：更完善迁移/备份/恢复、性能与长期数据治理

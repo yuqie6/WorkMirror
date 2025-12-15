@@ -102,7 +102,7 @@ func tokenizeClaim(s string) []string {
 	return out
 }
 
-func evidenceHintFromCounts(diffCount, browserCount int) string {
+func EvidenceHintFromCounts(diffCount, browserCount int) string {
 	if diffCount > 0 && browserCount > 0 {
 		return "diff+browser"
 	}
@@ -174,7 +174,7 @@ func buildSessionDocs(ctx context.Context, diffRepo DiffRepository, sessions []s
 			TimeRange:    timeRange,
 			Category:     strings.TrimSpace(s.Category),
 			Summary:      strings.TrimSpace(s.Summary),
-			EvidenceHint: evidenceHintFromCounts(diffCount, browserCount),
+			EvidenceHint: EvidenceHintFromCounts(diffCount, browserCount),
 			EndTime:      s.EndTime,
 		}
 

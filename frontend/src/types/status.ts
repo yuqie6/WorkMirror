@@ -77,6 +77,8 @@ export interface EvidenceStatusDTO {
     with_browser: number;
     with_diff_and_browser: number;
     weak_evidence: number;
+    orphan_diffs_24h?: number;
+    orphan_browser_24h?: number;
 }
 
 export interface RecentErrorDTO {

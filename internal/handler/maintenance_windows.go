@@ -13,3 +13,7 @@ func (a *API) HandleMaintenanceSessionsRebuild(w http.ResponseWriter, r *http.Re
 func (a *API) HandleMaintenanceSessionsEnrich(w http.ResponseWriter, r *http.Request) {
 	a.HandleEnrichSessionsForDate(w, r)
 }
+
+func (a *API) HandleMaintenanceSessionsRepairEvidence(w http.ResponseWriter, r *http.Request) {
+	a.HandleRepairEvidenceForDate(w, r)
+}

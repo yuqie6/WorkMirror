@@ -311,8 +311,8 @@ export default function SessionsView({
                 </button>
               </div>
               <div className="flex items-center gap-2 mb-2">
-                <Badge variant={selectedSession.summary ? 'default' : 'secondary'}>
-                  {selectedSession.summary ? t('sessions.aiAnalysis') : t('sessions.ruleGenerated')}
+                <Badge variant={selectedSession.semantic_source === 'ai' ? 'default' : 'secondary'}>
+                  {selectedSession.semantic_source === 'ai' ? t('sessions.aiAnalysis') : t('sessions.ruleGenerated')}
                 </Badge>
                 <Badge variant="outline">{selectedSession.time_range}</Badge>
               </div>

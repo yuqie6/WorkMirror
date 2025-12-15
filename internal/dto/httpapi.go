@@ -242,6 +242,21 @@ type DateRequestDTO struct {
 	Date string `json:"date"`
 }
 
+type RepairEvidenceRequestDTO struct {
+	Date             string `json:"date"`
+	AttachGapMinutes int    `json:"attach_gap_minutes,omitempty"`
+	Limit            int    `json:"limit,omitempty"`
+}
+
+type RepairEvidenceResultDTO struct {
+	OrphanDiffs      int `json:"orphan_diffs"`
+	OrphanBrowser    int `json:"orphan_browser"`
+	AttachedDiffs    int `json:"attached_diffs"`
+	AttachedBrowser  int `json:"attached_browser"`
+	UpdatedSessions  int `json:"updated_sessions"`
+	AttachGapMinutes int `json:"attach_gap_minutes"`
+}
+
 type SessionDTO struct {
 	ID             int64    `json:"id"`
 	Date           string   `json:"date"`
@@ -249,11 +264,17 @@ type SessionDTO struct {
 	EndTime        int64    `json:"end_time"`
 	TimeRange      string   `json:"time_range"`
 	PrimaryApp     string   `json:"primary_app"`
+	SessionVersion int      `json:"session_version"`
 	Category       string   `json:"category"`
 	Summary        string   `json:"summary"`
 	SkillsInvolved []string `json:"skills_involved"`
 	DiffCount      int      `json:"diff_count"`
 	BrowserCount   int      `json:"browser_count"`
+
+	SemanticSource  string `json:"semantic_source"`            // ai | rule
+	SemanticVersion string `json:"semantic_version,omitempty"` // e.g. "v1"
+	EvidenceHint    string `json:"evidence_hint"`              // diff+browser | diff | browser | window_only | diff_only | browser_only
+	DegradedReason  string `json:"degraded_reason,omitempty"`  // only meaningful when semantic_source=rule
 }
 
 type SessionAppUsageDTO struct {

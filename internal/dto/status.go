@@ -87,6 +87,9 @@ type EvidenceStatusDTO struct {
 	WithBrowser     int64 `json:"with_browser"`
 	WithDiffBrowser int64 `json:"with_diff_and_browser"`
 	WeakEvidence    int64 `json:"weak_evidence"`
+
+	OrphanDiffs24h   int64 `json:"orphan_diffs_24h,omitempty"`
+	OrphanBrowser24h int64 `json:"orphan_browser_24h,omitempty"`
 }
 
 type RecentErrorDTO struct {
