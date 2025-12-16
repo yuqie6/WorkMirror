@@ -289,15 +289,15 @@ export default function SettingsView() {
       <Card className="bg-zinc-900 border-zinc-800">
         <CardHeader>
           <CardTitle className="text-base font-medium text-zinc-200 flex items-center gap-2">
-            <SettingsIcon size={18} /> AI Prompt {t('language.switch')}
+            <SettingsIcon size={18} /> {t('settings.aiOutputLanguage')}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between">
             <div className="space-y-1">
-              <div className="text-sm text-zinc-300">AI 生成语言</div>
+              <div className="text-sm text-zinc-300">{t('settings.aiOutputLanguage')}</div>
               <div className="text-xs text-zinc-500">
-                控制日报、周报、会话摘要等 AI 生成内容的语言
+                {t('settings.aiOutputLanguageHint')}
               </div>
             </div>
             <div className="flex gap-2 bg-zinc-950 p-1 rounded-lg border border-zinc-800">

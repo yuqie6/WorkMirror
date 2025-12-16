@@ -1,13 +1,13 @@
 <article id="doc-overview-en" class="doc-content" data-lang="en">
     <h1>About WorkMirror</h1>
-    <p>WorkMirror is a Windows system tray resident local review tool: automatically collects your work "traces" (windows, code changes, browser history), organizes them into traceable work sessions, and generates daily/weekly reports and skill evolution.</p>
+    <p>WorkMirror is a Windows system tray resident local review tool: automatically collects your work activities (app usage, code changes, web browsing), organizes them into traceable work records, and generates daily/weekly reports and skill evolution.</p>
 
     <h2>What You Get</h2>
     <ul>
-        <li>Daily/weekly reviews: Every conclusion can be clicked to see evidence coverage and details.</li>
-        <li>Skill tree and capability evolution: Growth sources can be traced back to contributing work sessions.</li>
+        <li>Daily/weekly reviews: Every conclusion can be clicked to see the source data and details.</li>
+        <li>Skill tree and capability evolution: Growth sources can be traced back to contributing work records.</li>
         <li>Offline mode: Rule-based summaries and reviews work without external AI.</li>
-        <li>No need to contact the author when you see "blank page/no data": The status page tells you where the gap is and what to do next.</li>
+        <li>Clear guidance when you see "blank page/no data": The status page tells you what's wrong and how to fix it.</li>
     </ul>
 
     <h2>Privacy & Local-first</h2>
@@ -20,13 +20,13 @@
     <h2>How It Runs (v0.2.0-alpha.1)</h2>
     <ul>
         <li><code>workmirror.exe</code> (Windows 10/11 system tray resident)</li>
-        <li>Built-in local HTTP Server (random port, only listens on <code>127.0.0.1</code>)</li>
+        <li>Built-in local HTTP service (random port, only listens on <code>127.0.0.1</code>)</li>
         <li>Built-in Web UI (React/Vite SPA, prioritizes loading from <code>frontend/dist/</code> in the same directory, otherwise falls back to embedded resources)</li>
         <li>Port discovery: Written to <code>./data/http_base_url.txt</code></li>
     </ul>
 
     <h2>How It Works (Brief)</h2>
-    <p>Collection → Generate work sessions (segmentation/aggregation/summary) → Aggregate to skills and reviews → Each conclusion can be clicked to view evidence chain.</p>
+    <p>Collection → Generate work records (segmentation/aggregation/summary) → Aggregate to skills and reviews → Each conclusion can be clicked to view source data.</p>
 
     <h2>What's Not Included</h2>
     <ul>

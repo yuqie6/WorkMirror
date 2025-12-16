@@ -70,120 +70,138 @@ function getSkillIcon(name: string, type: string) {
   return Code2;
 }
 
-// 层级样式配置
+// 层级样式配置 - 设计规范 v2.0：排版阶梯 (Typography Ramp)
 const levelStyles = {
   domain: {
-    container: 'py-2.5 text-base font-bold',
-    text: 'text-zinc-100 uppercase tracking-wide text-sm',
+    container: 'py-3', // 最大呼吸感
+    text: 'text-lg font-bold text-zinc-100', // 18px，根基/主干
     icon: 'text-indigo-400',
+    iconSize: 20,
     progress: 'bg-indigo-500',
   },
   skill: {
-    container: 'py-2 text-[15px] font-medium',
-    text: 'text-zinc-300',
+    container: 'py-2', // 中等间距
+    text: 'text-base font-medium text-zinc-300', // 16px，主要分支
     icon: 'text-emerald-400',
+    iconSize: 18,
     progress: 'bg-emerald-500',
   },
   topic: {
-    container: 'py-1.5 text-sm',
-    text: 'text-zinc-400',
-    icon: 'text-zinc-500',
-    progress: 'bg-zinc-500',
+    container: 'py-1.5', // 紧凑间距
+    text: 'text-sm font-normal text-zinc-500', // 14px，树叶/细节
+    icon: 'text-zinc-600',
+    iconSize: 14,
+    progress: 'bg-zinc-600',
   },
 };
 
 function SkillTreeItem({ node, selectedId, onSelect, depth = 0 }: SkillTreeItemProps) {
-  const [open, setOpen] = useState(depth < 2);
+  // 默认展开一级（domain），折叠二级（skill 的子节点）
+  const [open, setOpen] = useState(node.type === 'domain');
   const hasChildren = node.children && node.children.length > 0;
   const isSelected = selectedId === node.id;
 
   const isRecent = node.lastActiveAt > 0 && Date.now() - node.lastActiveAt <= 2 * 24 * 60 * 60 * 1000;
   const TrendIcon = node.trend === 'up' ? TrendingUp : node.trend === 'down' ? TrendingDown : Minus;
-  const trendColor = node.trend === 'up' ? 'text-emerald-500' : node.trend === 'down' ? 'text-rose-500' : 'text-zinc-500';
+  const trendColor = node.trend === 'up' ? 'text-emerald-500' : node.trend === 'down' ? 'text-rose-500' : 'text-zinc-600';
 
   const style = levelStyles[node.type] || levelStyles.topic;
   const Icon = getSkillIcon(node.name, node.type);
 
   return (
-    <li className="relative">
-      {/* 视觉引导线 - 非根节点显示 */}
-      {depth > 0 && (
-        <div 
-          className="absolute left-0 top-0 w-px bg-zinc-800"
-          style={{ height: hasChildren && open ? '100%' : '50%' }}
-        />
-      )}
-      
+    <li className="relative list-none">
       <Collapsible open={open} onOpenChange={setOpen}>
+        {/* 节点行 - 整行可点击 */}
         <div
           className={cn(
-            'flex items-center gap-3 px-3 rounded-lg cursor-pointer transition-all group',
+            'group flex items-center gap-3 pr-3 rounded-r-lg cursor-pointer transition-all',
+            'border-l-2', // 左侧指示线基础
             style.container,
-            isSelected 
-              ? 'bg-zinc-800/80 ring-1 ring-zinc-700 shadow-sm' 
-              : 'hover:bg-zinc-800/50'
+            isSelected
+              ? 'bg-zinc-900 border-indigo-500' // 选中态：高亮背景 + indigo 指示条
+              : 'border-transparent hover:bg-zinc-800/50 hover:border-zinc-700' // 默认态
           )}
-          onClick={() => onSelect(node)}
+          onClick={() => {
+            onSelect(node);
+            if (hasChildren) setOpen(!open);
+          }}
         >
-          {/* 展开/折叠按钮或叶子节点圆点 */}
-          <div className="w-5 h-5 flex items-center justify-center shrink-0">
+          {/* 折叠开关 / 叶子节点圆点 */}
+          <div className="w-6 h-6 flex items-center justify-center shrink-0">
             {hasChildren ? (
               <CollapsibleTrigger asChild onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-                <button className="text-zinc-500 hover:text-zinc-300 transition-colors">
+                <button className="text-zinc-500 hover:text-zinc-300 transition-colors p-1">
                   {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                 </button>
               </CollapsibleTrigger>
             ) : (
-              <div className={cn(
-                'w-1.5 h-1.5 rounded-full transition-colors',
-                isSelected ? 'bg-white' : 'bg-zinc-700 group-hover:bg-zinc-500'
-              )} />
+              // Topic 节点：实心圆点代替图标
+              node.type === 'topic' && (
+                <div className={cn(
+                  'w-1.5 h-1.5 rounded-full transition-colors',
+                  isSelected ? 'bg-indigo-400' : 'bg-zinc-700 group-hover:bg-zinc-500'
+                )} />
+              )
             )}
           </div>
 
           {/* 节点图标 - 仅 domain 和 skill 显示 */}
           {node.type !== 'topic' && (
-            <div className={cn(style.icon, 'opacity-80 shrink-0')}>
-              <Icon size={node.type === 'domain' ? 18 : 16} />
+            <div className={cn(style.icon, 'shrink-0')}>
+              <Icon size={style.iconSize} />
             </div>
           )}
 
           {/* 文本内容 */}
-          <div className="flex-1 flex justify-between items-center min-w-0 gap-3">
+          <div className="flex-1 flex justify-between items-center min-w-0 gap-4">
             <span className={cn(
-              'truncate',
+              'truncate transition-colors',
               style.text,
-              !isRecent && node.type !== 'domain' && 'opacity-60'
+              !isRecent && node.type === 'topic' && 'opacity-60 group-hover:opacity-100'
             )}>
               {node.name}
             </span>
-            
-            {/* 右侧：Level + 进度条 + 趋势 */}
-            <div className="flex items-center gap-3 shrink-0">
+
+            {/* 右侧元数据 */}
+            <div className={cn(
+              'flex items-center gap-3 shrink-0 transition-opacity',
+              isSelected ? 'opacity-100' : 'opacity-50 group-hover:opacity-100'
+            )}>
               <TrendIcon size={12} className={trendColor} />
-              {node.type !== 'topic' && (
-                <span className="text-xs font-mono text-zinc-500 bg-zinc-900/50 px-1.5 py-0.5 rounded border border-zinc-800">
+              {node.type !== 'topic' ? (
+                <span className="text-[10px] font-mono text-zinc-500 bg-zinc-950 px-1.5 py-0.5 rounded border border-zinc-800">
                   Lv.{node.level}
                 </span>
-              )}
-              {node.type === 'topic' && (
+              ) : (
                 <span className="text-[10px] font-mono text-zinc-600">Lv.{node.level}</span>
               )}
-              <div className="w-14 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-                <div 
+              {/* 进度条 */}
+              <div className="w-12 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                <div
                   className={cn('h-full transition-all duration-500', style.progress)}
                   style={{ width: `${node.progress}%` }}
                 />
               </div>
+              <span className="text-[10px] font-mono text-zinc-600 w-8">{node.progress}%</span>
             </div>
           </div>
         </div>
 
+        {/* 子节点容器 - 使用 border-l 实现视觉引导线 */}
         {hasChildren && (
           <CollapsibleContent>
-            <ul className="ml-5 pl-4 mt-1 space-y-0.5 relative">
+            <ul className={cn(
+              'ml-[1.1rem] pl-4 mt-1 space-y-0.5',
+              'border-l border-zinc-800' // 显性引导线：左侧灰色竖线
+            )}>
               {node.children!.map((child: ISkillNode) => (
-                <SkillTreeItem key={child.id} node={child} selectedId={selectedId} onSelect={onSelect} depth={depth + 1} />
+                <SkillTreeItem
+                  key={child.id}
+                  node={child}
+                  selectedId={selectedId}
+                  onSelect={onSelect}
+                  depth={depth + 1}
+                />
               ))}
             </ul>
           </CollapsibleContent>
@@ -345,7 +363,8 @@ export default function SkillView({ selectedSkillId, onSelectSkill, onNavigateTo
     <div ref={containerRef} className="flex h-[calc(100vh-8rem)] animate-in fade-in duration-500">
       {/* Tree Explorer - 可拖拽宽度 */}
       <div style={{ width: `${leftWidth}%` }} className="pr-2 overflow-y-auto border-r border-zinc-800">
-        <ul className="space-y-1">
+        {/* 根节点容器：space-y-2 让顶层 Domain 之间有呼吸感 */}
+        <ul className="space-y-2 py-2">
           {skills.map((node) => (
             <SkillTreeItem key={node.id} node={node} selectedId={selectedSkill?.id ?? null} onSelect={handleSelectSkill} />
           ))}

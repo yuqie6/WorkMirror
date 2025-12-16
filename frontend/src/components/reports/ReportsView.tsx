@@ -472,7 +472,7 @@ export default function ReportsView({ onNavigateToSession }: ReportsViewProps) {
                                   </Badge>
                                   <span className="text-[10px] text-zinc-600 font-mono">{s.time_range}</span>
                                   <span
-                                    title="证据充足：Diff+浏览；证据一般：Diff或浏览；证据不足：仅窗口"
+                                    title={t('reports.evidenceStrengthTooltip')}
                                     className={`text-[10px] px-2 py-0.5 rounded border ${strength.color}`}
                                   >
                                     {strength.label}

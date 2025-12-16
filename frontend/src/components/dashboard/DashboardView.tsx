@@ -177,7 +177,7 @@ export default function DashboardView({ onNavigate }: DashboardViewProps) {
             </div>
             {weakEvidenceCount > 0 && (
               <div
-                title="证据不足：缺少 Diff/浏览等证据的会话比例较高，建议配置 Diff 监控路径或启用浏览器采集"
+                title={t('dashboard.weakEvidenceTooltip')}
                 className="mt-4 text-xs text-amber-500 flex items-center gap-1"
               >
                 <AlertTriangle size={12} /> {weakEvidenceCount} {t('dashboard.weakEvidenceSessions')}
@@ -309,7 +309,7 @@ export default function DashboardView({ onNavigate }: DashboardViewProps) {
                   <div
                     key={i}
                     className={`w-4 h-4 rounded-sm ${color} cursor-pointer hover:ring-1 hover:ring-zinc-600`}
-                    title={`${dateStr}: ${item.sessions} 会话 | ${item.diffs} diff | ${item.codingMins}m`}
+                    title={`${dateStr}: ${item.sessions} ${t('common.sessions')} | ${item.diffs} ${t('dashboard.codeChangesShort')} | ${item.codingMins}m`}
                   />
                 );
               })}
